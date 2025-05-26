@@ -4,6 +4,10 @@ import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 
 export const login = async (req: Request, res: Response) => {
+  if (!req?.body?.username || !req?.body?.password) {
+    res.status(400).json({ message: "Username or password are required" });
+    return;
+  }
   const { username, password } = req.body;
 
   try {
@@ -40,12 +44,17 @@ export const login = async (req: Request, res: Response) => {
 };
 
 export const register = async (req: Request, res: Response) => {
+  if (!req?.body?.username || !req?.body?.password) {
+    res.status(400).json({ message: "Username or password are required" });
+    return;
+  }
+
   const { username, password } = req.body;
 
   try {
     const existingUser = await User.findOne({ username });
     if (existingUser) {
-      res.status(400).json({ message: "Username already exists" });
+      res.status(400).json({ message: `Username ${username} already exists` });
       return;
     }
 
@@ -53,7 +62,9 @@ export const register = async (req: Request, res: Response) => {
     const newUser = new User({ username, password: hashedPassword });
     await newUser.save();
 
-    res.status(201).json({ message: `User registered with ${username}` });
+    res
+      .status(201)
+      .json({ message: `User registered with username ${username}` });
   } catch (error) {
     res.status(500).json({ message: "Registration failed", error: error });
   }
