@@ -1,2 +1,2 @@
 export * from "./authenticate";
-export * from "./role";
+export * from "./authoriseRole";
