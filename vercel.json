@@ -1,0 +1,23 @@
+{
+  "version": 2,
+  "builds": [
+    {
+      "src": "dist/index.js",
+      "use": "@vercel/node"
+    }
+  ],
+  "routes": [
+    {
+      "src": "/(.*)",
+      "dest": "dist/index.js"
+    }
+  ],
+  "ignore": [
+    "src/**/*.test.ts",
+    "src/**/__tests__/*",
+    "db/**/__tests__/*",
+    "middleware/**/__tests__/*",
+    "models/**/__tests__/*",
+    "routes/**/__tests__/*"
+  ]
+}
