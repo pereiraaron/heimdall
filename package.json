@@ -17,14 +17,9 @@
   "devDependencies": {
     "@types/bcrypt": "^5.0.2",
     "@types/express": "^5.0.2",
-    "@types/express-session": "^1.18.2",
     "@types/jest": "^29.5.14",
     "@types/jsonwebtoken": "^9.0.9",
     "@types/mongoose": "^5.11.97",
-    "@types/passport": "^1.0.17",
-    "@types/passport-facebook": "^3.0.3",
-    "@types/passport-google-oauth20": "^2.0.16",
-    "@types/passport-twitter": "^1.0.40",
     "@types/supertest": "^6.0.3",
     "jest": "^29.7.0",
     "nodemon": "^3.1.10",
@@ -37,13 +32,8 @@
     "bcrypt": "^6.0.0",
     "dotenv": "^16.5.0",
     "express": "^5.1.0",
-    "express-session": "^1.18.1",
     "jsonwebtoken": "^9.0.2",
     "mongodb": "^6.16.0",
-    "mongoose": "^8.15.0",
-    "passport": "^0.7.0",
-    "passport-facebook": "^3.0.0",
-    "passport-google-oauth20": "^2.0.0",
-    "passport-twitter": "^1.0.4"
+    "mongoose": "^8.15.0"
   }
 }
