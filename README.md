@@ -13,4 +13,4 @@
 - ✅ Modular structure with controllers, models, routes, and types
 - ✅ TypeScript for safety and developer experience
 - ✅ Hot-reload development using `nodemon` + `ts-node`
-
+- ✅ Automated dependency updates with Renovate Bot
