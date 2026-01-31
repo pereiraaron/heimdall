@@ -3,9 +3,13 @@ import { IUser, UserRole } from "../types";
 
 const userSchema = new Schema<IUser>(
   {
+    projectIds: {
+      type: [String],
+      default: [],
+      index: true,
+    },
     username: {
       type: String,
-      unique: true,
       trim: true,
     },
     email: {
@@ -20,14 +24,6 @@ const userSchema = new Schema<IUser>(
       minlength: 6,
       select: false, // Exclude password from queries by default
     },
-    createdAt: {
-      type: Date,
-      default: Date.now,
-    },
-    updatedAt: {
-      type: Date,
-      default: Date.now,
-    },
     role: {
       type: String,
       enum: [UserRole.Admin, UserRole.Manager, UserRole.User],
@@ -38,5 +34,6 @@ const userSchema = new Schema<IUser>(
     timestamps: true, // Automatically manage createdAt and updatedAt fields
   }
 );
+
 
 export const User = model("User", userSchema);

@@ -60,9 +60,9 @@ describe("User Routes", () => {
     expect(typeof userRoutes).toBe("function");
   });
 
-  describe("GET /users", () => {
+  describe("GET /", () => {
     it("should call authenticate middleware and return users", async () => {
-      const response = await request(app).get("/users");
+      const response = await request(app).get("/");
 
       expect(authenticate).toHaveBeenCalled();
       expect(getAllUsers).toHaveBeenCalled();
@@ -73,9 +73,9 @@ describe("User Routes", () => {
     });
   });
 
-  describe("GET /users/:id", () => {
+  describe("GET /:id", () => {
     it("should call authenticate and authoriseRole middleware", async () => {
-      const response = await request(app).get("/users/user123");
+      const response = await request(app).get("/user123");
 
       expect(authenticate).toHaveBeenCalled();
       expect(getUserById).toHaveBeenCalled();
@@ -83,10 +83,10 @@ describe("User Routes", () => {
     });
   });
 
-  describe("PUT /users/:id", () => {
-    it("should call authenticate middleware and update user", async () => {
+  describe("PUT /:id", () => {
+    it("should call authenticate and authoriseRole middleware and update user", async () => {
       const response = await request(app)
-        .put("/users/user123")
+        .put("/user123")
         .send({ email: "updated@example.com" });
 
       expect(authenticate).toHaveBeenCalled();
@@ -99,9 +99,9 @@ describe("User Routes", () => {
     });
   });
 
-  describe("DELETE /users/:id", () => {
-    it("should call authenticate middleware and delete user", async () => {
-      const response = await request(app).delete("/users/user123");
+  describe("DELETE /:id", () => {
+    it("should call authenticate and authoriseRole middleware and delete user", async () => {
+      const response = await request(app).delete("/user123");
 
       expect(authenticate).toHaveBeenCalled();
       expect(deleteUserById).toHaveBeenCalled();

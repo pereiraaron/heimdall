@@ -10,11 +10,11 @@ import { UserRole } from "../types";
 
 const router = Router();
 
-router.get("/users", authenticate, getAllUsers);
+router.get("/", authenticate, getAllUsers);
 router
-  .route("/users/:id")
+  .route("/:id")
   .get(authenticate, authoriseRole([UserRole.Admin]), getUserById)
-  .put(authenticate, updateUserById)
-  .delete(authenticate, deleteUserById);
+  .put(authenticate, authoriseRole([UserRole.Admin]), updateUserById)
+  .delete(authenticate, authoriseRole([UserRole.Admin]), deleteUserById);
 
 export default router;

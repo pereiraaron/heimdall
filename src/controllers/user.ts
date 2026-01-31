@@ -1,18 +1,21 @@
-import { Request, Response } from "express";
+import { Response } from "express";
 import { User } from "../models";
+import { AuthRequest } from "../types";
 
-export const getAllUsers = async (req: Request, res: Response) => {
+export const getAllUsers = async (req: AuthRequest, res: Response) => {
   try {
-    const users = await User.find();
+    const projectId = req.user?.projectId;
+    const users = await User.find({ projectIds: projectId });
     res.status(200).json(users);
   } catch (error) {
     res.status(500).json({ message: "Error fetching users", error });
   }
 };
 
-export const getUserById = async (req: Request, res: Response) => {
+export const getUserById = async (req: AuthRequest, res: Response) => {
   try {
-    const user = await User.findById(req.params.id);
+    const projectId = req.user?.projectId;
+    const user = await User.findOne({ _id: req.params.id, projectIds: projectId });
 
     if (!user) {
       res.status(404).json({ message: "User not found" });
@@ -25,11 +28,12 @@ export const getUserById = async (req: Request, res: Response) => {
   }
 };
 
-export const updateUserById = async (req: Request, res: Response) => {
+export const updateUserById = async (req: AuthRequest, res: Response) => {
   try {
+    const projectId = req.user?.projectId;
     const { email, role } = req.body;
-    const updatedUser = await User.findByIdAndUpdate(
-      req.params.id,
+    const updatedUser = await User.findOneAndUpdate(
+      { _id: req.params.id, projectIds: projectId },
       { email, role },
       { new: true, runValidators: true }
     );
@@ -45,9 +49,10 @@ export const updateUserById = async (req: Request, res: Response) => {
   }
 };
 
-export const deleteUserById = async (req: Request, res: Response) => {
+export const deleteUserById = async (req: AuthRequest, res: Response) => {
   try {
-    const deletedUser = await User.findByIdAndDelete(req.params.id);
+    const projectId = req.user?.projectId;
+    const deletedUser = await User.findOneAndDelete({ _id: req.params.id, projectIds: projectId });
 
     if (!deletedUser) {
       res.status(404).json({ message: "User not found" });
