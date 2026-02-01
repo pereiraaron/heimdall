@@ -7,7 +7,7 @@
   "license": "MIT",
   "scripts": {
     "start": "node dist/index.js",
-    "build": "tsc",
+    "build": "rm -rf dist && tsc",
     "dev": "nodemon --watch src --ext ts --ignore dist --exec ts-node src/index.ts",
     "test": "jest",
     "test:watch": "jest --watch",
