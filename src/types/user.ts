@@ -1,3 +1,6 @@
+import { Document } from "mongoose";
+
+/** @deprecated Use MembershipRole instead for per-project roles */
 export enum UserRole {
   User = "user",
   Admin = "admin",
@@ -5,11 +8,10 @@ export enum UserRole {
 }
 
 export interface IUser extends Document {
-  projectIds: string[];
   username: string;
   password: string;
   email: string;
-  role: UserRole;
+  isActive: boolean;
   createdAt: Date;
   updatedAt: Date;
 }

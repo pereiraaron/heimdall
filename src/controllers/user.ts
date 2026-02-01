@@ -1,11 +1,25 @@
 import { Response } from "express";
-import { User } from "../models";
-import { AuthRequest } from "../types";
+import { User, UserProjectMembership } from "../models";
+import { AuthRequest, MembershipStatus } from "../types";
 
 export const getAllUsers = async (req: AuthRequest, res: Response) => {
   try {
     const projectId = req.user?.projectId;
-    const users = await User.find({ projectIds: projectId });
+
+    // Get all active memberships for this project with user details
+    const memberships = await UserProjectMembership.find({
+      projectId,
+      status: MembershipStatus.Active,
+    }).populate("userId", "email username createdAt updatedAt");
+
+    // Transform to user-centric response with membership info
+    const users = memberships.map((m) => ({
+      ...((m.userId as any)?.toObject() || {}),
+      role: m.role,
+      membershipId: m._id,
+      joinedAt: m.joinedAt,
+    }));
+
     res.status(200).json(users);
   } catch (error) {
     res.status(500).json({ message: "Error fetching users", error });
@@ -15,12 +29,27 @@ export const getAllUsers = async (req: AuthRequest, res: Response) => {
 export const getUserById = async (req: AuthRequest, res: Response) => {
   try {
     const projectId = req.user?.projectId;
-    const user = await User.findOne({ _id: req.params.id, projectIds: projectId });
+    const userId = req.params.id;
 
-    if (!user) {
-      res.status(404).json({ message: "User not found" });
+    // Find membership for this user in this project
+    const membership = await UserProjectMembership.findOne({
+      userId,
+      projectId,
+      status: MembershipStatus.Active,
+    }).populate("userId", "email username createdAt updatedAt");
+
+    if (!membership) {
+      res.status(404).json({ message: "User not found in this project" });
       return;
     }
+
+    const user = {
+      ...((membership.userId as any)?.toObject() || {}),
+      role: membership.role,
+      membershipId: membership._id,
+      joinedAt: membership.joinedAt,
+      metadata: membership.metadata,
+    };
 
     res.status(200).json(user);
   } catch (error) {
@@ -31,19 +60,39 @@ export const getUserById = async (req: AuthRequest, res: Response) => {
 export const updateUserById = async (req: AuthRequest, res: Response) => {
   try {
     const projectId = req.user?.projectId;
-    const { email, role } = req.body;
-    const updatedUser = await User.findOneAndUpdate(
-      { _id: req.params.id, projectIds: projectId },
-      { email, role },
-      { new: true, runValidators: true }
-    );
+    const userId = req.params.id;
+    const { email, username } = req.body;
 
-    if (!updatedUser) {
-      res.status(404).json({ message: "User not found" });
+    // Verify user is a member of this project
+    const membership = await UserProjectMembership.findOne({
+      userId,
+      projectId,
+      status: MembershipStatus.Active,
+    });
+
+    if (!membership) {
+      res.status(404).json({ message: "User not found in this project" });
       return;
     }
 
-    res.status(200).json({ message: "User updated", user: updatedUser });
+    // Update user details (not role - that's done via membership endpoint)
+    const updateData: Record<string, string> = {};
+    if (email) updateData.email = email;
+    if (username) updateData.username = username;
+
+    const updatedUser = await User.findByIdAndUpdate(
+      userId,
+      updateData,
+      { new: true, runValidators: true }
+    );
+
+    res.status(200).json({
+      message: "User updated",
+      user: {
+        ...updatedUser?.toObject(),
+        role: membership.role,
+      },
+    });
   } catch (error) {
     res.status(500).json({ message: "Error updating user", error });
   }
@@ -52,15 +101,30 @@ export const updateUserById = async (req: AuthRequest, res: Response) => {
 export const deleteUserById = async (req: AuthRequest, res: Response) => {
   try {
     const projectId = req.user?.projectId;
-    const deletedUser = await User.findOneAndDelete({ _id: req.params.id, projectIds: projectId });
+    const userId = req.params.id;
 
-    if (!deletedUser) {
-      res.status(404).json({ message: "User not found" });
+    // Find and delete membership
+    const membership = await UserProjectMembership.findOneAndDelete({
+      userId,
+      projectId,
+    });
+
+    if (!membership) {
+      res.status(404).json({ message: "User not found in this project" });
       return;
     }
 
-    res.status(200).json({ message: "User deleted successfully" });
+    // Check if user has any other memberships
+    const otherMemberships = await UserProjectMembership.countDocuments({ userId });
+
+    if (otherMemberships === 0) {
+      // Optionally delete user if they have no other memberships
+      // Uncomment the next line if you want to delete orphaned users
+      // await User.findByIdAndDelete(userId);
+    }
+
+    res.status(200).json({ message: "User removed from project successfully" });
   } catch (error) {
-    res.status(500).json({ message: "Error deleting user", error });
+    res.status(500).json({ message: "Error removing user", error });
   }
 };

@@ -1,13 +1,8 @@
 import { Schema, model } from "mongoose";
-import { IUser, UserRole } from "../types";
+import { IUser } from "../types";
 
 const userSchema = new Schema<IUser>(
   {
-    projectIds: {
-      type: [String],
-      default: [],
-      index: true,
-    },
     username: {
       type: String,
       trim: true,
@@ -22,18 +17,16 @@ const userSchema = new Schema<IUser>(
       type: String,
       required: true,
       minlength: 6,
-      select: false, // Exclude password from queries by default
+      select: false,
     },
-    role: {
-      type: String,
-      enum: [UserRole.Admin, UserRole.Manager, UserRole.User],
-      default: UserRole.User,
+    isActive: {
+      type: Boolean,
+      default: true,
     },
   },
   {
-    timestamps: true, // Automatically manage createdAt and updatedAt fields
+    timestamps: true,
   }
 );
-
 
 export const User = model("User", userSchema);

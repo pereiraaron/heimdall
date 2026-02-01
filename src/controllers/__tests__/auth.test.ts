@@ -1,15 +1,20 @@
 import { Response } from "express";
 import { login, register } from "../auth";
-import { User } from "../../models";
+import { User, UserProjectMembership } from "../../models";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
-import { ApiKeyRequest } from "../../types";
+import { ApiKeyRequest, MembershipRole, MembershipStatus } from "../../types";
 
 jest.mock("../../models", () => ({
   User: {
     findOne: jest.fn().mockReturnValue({
       select: jest.fn(),
     }),
+    create: jest.fn(),
+  },
+  UserProjectMembership: {
+    findOne: jest.fn(),
+    create: jest.fn(),
   },
 }));
 
@@ -93,7 +98,6 @@ describe("Auth Controller", () => {
           _id: "user123",
           email: "test@example.com",
           password: "hashedPassword",
-          projectIds: ["project-123"],
         }),
       });
       (bcrypt.compare as jest.Mock).mockResolvedValueOnce(false);
@@ -106,23 +110,23 @@ describe("Auth Controller", () => {
       });
     });
 
-    it("should return 403 if user is not associated with project", async () => {
+    it("should return 403 if user has no active membership for project", async () => {
       mockRequest.body = { email: "test@example.com", password: "password123" };
       (User.findOne as jest.Mock).mockReturnValueOnce({
         select: jest.fn().mockResolvedValueOnce({
           _id: "user123",
           email: "test@example.com",
           password: "hashedPassword",
-          projectIds: ["other-project"],
         }),
       });
       (bcrypt.compare as jest.Mock).mockResolvedValueOnce(true);
+      (UserProjectMembership.findOne as jest.Mock).mockResolvedValueOnce(null);
 
       await login(mockRequest as ApiKeyRequest, mockResponse as Response);
 
       expect(responseStatus).toHaveBeenCalledWith(403);
       expect(responseJson).toHaveBeenCalledWith({
-        message: "Access denied",
+        message: "Access denied. No active membership for this project.",
       });
     });
 
@@ -133,20 +137,32 @@ describe("Auth Controller", () => {
         email: "test@example.com",
         password: "hashedPassword",
         username: "testuser",
-        role: "user",
-        projectIds: ["project-123"],
+      };
+      const mockMembership = {
+        _id: "membership123",
+        userId: "user123",
+        projectId: "project-123",
+        role: MembershipRole.Member,
+        status: MembershipStatus.Active,
       };
 
       (User.findOne as jest.Mock).mockReturnValueOnce({
         select: jest.fn().mockResolvedValueOnce(mockUser),
       });
       (bcrypt.compare as jest.Mock).mockResolvedValueOnce(true);
+      (UserProjectMembership.findOne as jest.Mock).mockResolvedValueOnce(mockMembership);
       (jwt.sign as jest.Mock).mockReturnValueOnce("test-token");
 
       await login(mockRequest as ApiKeyRequest, mockResponse as Response);
 
       expect(jwt.sign).toHaveBeenCalledWith(
-        { id: "user123", email: "test@example.com", role: "user", projectId: "project-123" },
+        {
+          id: "user123",
+          email: "test@example.com",
+          role: MembershipRole.Member,
+          projectId: "project-123",
+          membershipId: "membership123",
+        },
         "test-secret-key",
         { expiresIn: "1h" }
       );
@@ -157,7 +173,7 @@ describe("Auth Controller", () => {
         user: {
           id: "user123",
           username: "testuser",
-          role: "user",
+          role: MembershipRole.Member,
         },
       });
     });
@@ -188,20 +204,24 @@ describe("Auth Controller", () => {
       });
     });
 
-    it("should return 400 if user already exists for this project", async () => {
+    it("should return 400 if user already has active membership for this project", async () => {
       mockRequest.body = { email: "test@example.com", password: "password123" };
       (User.findOne as jest.Mock).mockReturnValueOnce({
         select: jest.fn().mockResolvedValueOnce({
+          _id: "user123",
           email: "test@example.com",
-          projectIds: ["project-123"],
+          password: "hashedPassword",
         }),
+      });
+      (UserProjectMembership.findOne as jest.Mock).mockResolvedValueOnce({
+        status: MembershipStatus.Active,
       });
 
       await register(mockRequest as ApiKeyRequest, mockResponse as Response);
 
       expect(responseStatus).toHaveBeenCalledWith(400);
       expect(responseJson).toHaveBeenCalledWith({
-        message: "User already exists",
+        message: "User already registered for this project",
       });
     });
 
@@ -209,11 +229,12 @@ describe("Auth Controller", () => {
       mockRequest.body = { email: "test@example.com", password: "wrongpassword" };
       (User.findOne as jest.Mock).mockReturnValueOnce({
         select: jest.fn().mockResolvedValueOnce({
+          _id: "user123",
           email: "test@example.com",
           password: "hashedPassword",
-          projectIds: ["other-project"],
         }),
       });
+      (UserProjectMembership.findOne as jest.Mock).mockResolvedValueOnce(null);
       (bcrypt.compare as jest.Mock).mockResolvedValueOnce(false);
 
       await register(mockRequest as ApiKeyRequest, mockResponse as Response);
@@ -224,25 +245,31 @@ describe("Auth Controller", () => {
       });
     });
 
-    it("should add existing user to new project with correct password", async () => {
+    it("should create membership for existing user with correct password", async () => {
       mockRequest.body = { email: "test@example.com", password: "password123" };
-      const mockSave = jest.fn().mockResolvedValueOnce(undefined);
       (User.findOne as jest.Mock).mockReturnValueOnce({
         select: jest.fn().mockResolvedValueOnce({
+          _id: "user123",
           email: "test@example.com",
           password: "hashedPassword",
-          projectIds: ["other-project"],
-          save: mockSave,
         }),
       });
+      (UserProjectMembership.findOne as jest.Mock).mockResolvedValueOnce(null);
       (bcrypt.compare as jest.Mock).mockResolvedValueOnce(true);
+      (UserProjectMembership.create as jest.Mock).mockResolvedValueOnce({});
 
       await register(mockRequest as ApiKeyRequest, mockResponse as Response);
 
-      expect(mockSave).toHaveBeenCalled();
-      expect(responseStatus).toHaveBeenCalledWith(200);
+      expect(UserProjectMembership.create).toHaveBeenCalledWith({
+        userId: "user123",
+        projectId: "project-123",
+        role: MembershipRole.Member,
+        status: MembershipStatus.Active,
+        joinedAt: expect.any(Date),
+      });
+      expect(responseStatus).toHaveBeenCalledWith(201);
       expect(responseJson).toHaveBeenCalledWith({
-        message: "Registration successful",
+        message: "User registered with email test@example.com",
       });
     });
 
@@ -253,24 +280,24 @@ describe("Auth Controller", () => {
         select: jest.fn().mockResolvedValueOnce(null),
       });
       (bcrypt.hash as jest.Mock).mockResolvedValueOnce("hashedPassword");
-
-      const mockSave = jest.fn().mockResolvedValueOnce(undefined);
-      const originalUser = jest.requireMock("../../models").User;
-      jest.requireMock("../../models").User = function () {
-        return { save: mockSave };
-      };
-      jest.requireMock("../../models").User.findOne = originalUser.findOne;
+      (User.create as jest.Mock).mockResolvedValueOnce({
+        _id: "newuser123",
+        email: "test@example.com",
+      });
+      (UserProjectMembership.create as jest.Mock).mockResolvedValueOnce({});
 
       await register(mockRequest as ApiKeyRequest, mockResponse as Response);
 
       expect(bcrypt.hash).toHaveBeenCalledWith("password123", 10);
-      expect(mockSave).toHaveBeenCalled();
+      expect(User.create).toHaveBeenCalledWith({
+        email: "test@example.com",
+        password: "hashedPassword",
+      });
+      expect(UserProjectMembership.create).toHaveBeenCalled();
       expect(responseStatus).toHaveBeenCalledWith(201);
       expect(responseJson).toHaveBeenCalledWith({
         message: "User registered with email test@example.com",
       });
-
-      jest.requireMock("../../models").User = originalUser;
     });
 
     it("should return 500 on server error", async () => {

@@ -8,14 +8,20 @@ import {
   updateUserById,
   deleteUserById,
 } from "../../controllers";
-import { UserRole } from "../../types";
+import { MembershipRole } from "../../types";
 import { AuthRequest } from "../../types/auth";
 
 // Mock middleware
 jest.mock("../../middleware", () => ({
   authenticate: jest.fn(
     (req: AuthRequest, res: Response, next: NextFunction) => {
-      req.user = { id: "user123", email: "test@example.com", role: "user" };
+      req.user = {
+        id: "user123",
+        email: "test@example.com",
+        role: MembershipRole.Admin,
+        projectId: "project-123",
+        membershipId: "membership-123",
+      };
       next();
     }
   ),

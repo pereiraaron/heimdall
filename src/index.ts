@@ -3,6 +3,7 @@ import dotenv from "dotenv";
 import { connectToDB } from "./db/connect";
 import authRoutes from "./routes/auth";
 import userRoutes from "./routes/user";
+import membershipRoutes from "./routes/membership";
 
 dotenv.config();
 
@@ -18,6 +19,7 @@ app.use(express.json());
 // Routes
 app.use("/api/auth", authRoutes);
 app.use("/api/users", userRoutes);
+app.use("/api/memberships", membershipRoutes);
 
 // Health check route
 app.get("/", (_, res) => {

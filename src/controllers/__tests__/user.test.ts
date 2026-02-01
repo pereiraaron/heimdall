@@ -1,12 +1,12 @@
 import { Response } from "express";
-import { UserRole, AuthRequest } from "../../types";
+import { MembershipRole, MembershipStatus, AuthRequest } from "../../types";
 import {
   getAllUsers,
   getUserById,
   updateUserById,
   deleteUserById,
 } from "../user";
-import { User } from "../../models";
+import { User, UserProjectMembership } from "../../models";
 
 jest.mock("mongoose", () => {
   const originalModule = jest.requireActual("mongoose");
@@ -19,10 +19,15 @@ jest.mock("mongoose", () => {
 
 jest.mock("../../models", () => ({
   User: {
-    find: jest.fn(),
-    findOne: jest.fn(),
-    findOneAndUpdate: jest.fn(),
+    findByIdAndUpdate: jest.fn(),
+    findByIdAndDelete: jest.fn(),
+  },
+  UserProjectMembership: {
+    find: jest.fn().mockReturnThis(),
+    findOne: jest.fn().mockReturnThis(),
     findOneAndDelete: jest.fn(),
+    countDocuments: jest.fn(),
+    populate: jest.fn(),
   },
 }));
 
@@ -42,10 +47,14 @@ describe("User Controller", () => {
       },
       body: {
         email: "test@example.com",
-        role: UserRole.User,
+        username: "testuser",
       },
       user: {
+        id: "current-user-id",
+        email: "current@example.com",
+        role: MembershipRole.Admin,
         projectId: "project-123",
+        membershipId: "membership-123",
       },
     };
 
@@ -59,27 +68,42 @@ describe("User Controller", () => {
 
   describe("getAllUsers", () => {
     it("should return users scoped to project with status 200", async () => {
-      const mockUsers = [
-        { _id: "1", email: "user1@example.com", role: UserRole.User, projectIds: ["project-123"] },
-        { _id: "2", email: "user2@example.com", role: UserRole.Admin, projectIds: ["project-123"] },
+      const mockMemberships = [
+        {
+          _id: "membership-1",
+          userId: { _id: "1", email: "user1@example.com", username: "user1", toObject: () => ({ _id: "1", email: "user1@example.com", username: "user1" }) },
+          role: MembershipRole.Member,
+          joinedAt: new Date(),
+        },
+        {
+          _id: "membership-2",
+          userId: { _id: "2", email: "user2@example.com", username: "user2", toObject: () => ({ _id: "2", email: "user2@example.com", username: "user2" }) },
+          role: MembershipRole.Admin,
+          joinedAt: new Date(),
+        },
       ];
 
-      (User.find as jest.Mock).mockResolvedValue(mockUsers);
+      (UserProjectMembership.find as jest.Mock).mockReturnValue({
+        populate: jest.fn().mockResolvedValue(mockMemberships),
+      });
 
       await getAllUsers(mockRequest as AuthRequest, mockResponse as Response);
 
-      expect(User.find).toHaveBeenCalledWith({ projectIds: "project-123" });
+      expect(UserProjectMembership.find).toHaveBeenCalledWith({
+        projectId: "project-123",
+        status: MembershipStatus.Active,
+      });
       expect(responseStatus).toHaveBeenCalledWith(200);
-      expect(responseJson).toHaveBeenCalledWith(mockUsers);
     });
 
     it("should handle errors and return status 500", async () => {
       const error = new Error("Database error");
-      (User.find as jest.Mock).mockRejectedValue(error);
+      (UserProjectMembership.find as jest.Mock).mockReturnValue({
+        populate: jest.fn().mockRejectedValue(error),
+      });
 
       await getAllUsers(mockRequest as AuthRequest, mockResponse as Response);
 
-      expect(User.find).toHaveBeenCalledWith({ projectIds: "project-123" });
       expect(responseStatus).toHaveBeenCalledWith(500);
       expect(responseJson).toHaveBeenCalledWith({
         message: "Error fetching users",
@@ -90,40 +114,44 @@ describe("User Controller", () => {
 
   describe("getUserById", () => {
     it("should return a user with status 200 when user exists in project", async () => {
-      const mockUser = {
-        _id: "mock-user-id",
-        email: "user@example.com",
-        role: UserRole.User,
-        projectIds: ["project-123"],
+      const mockMembership = {
+        _id: "membership-id",
+        userId: { _id: "mock-user-id", email: "user@example.com", username: "testuser", toObject: () => ({ _id: "mock-user-id", email: "user@example.com", username: "testuser" }) },
+        role: MembershipRole.Member,
+        joinedAt: new Date(),
+        metadata: {},
       };
-      (User.findOne as jest.Mock).mockResolvedValue(mockUser);
+
+      (UserProjectMembership.findOne as jest.Mock).mockReturnValue({
+        populate: jest.fn().mockResolvedValue(mockMembership),
+      });
 
       await getUserById(mockRequest as AuthRequest, mockResponse as Response);
 
-      expect(User.findOne).toHaveBeenCalledWith({
-        _id: "mock-user-id",
-        projectIds: "project-123",
+      expect(UserProjectMembership.findOne).toHaveBeenCalledWith({
+        userId: "mock-user-id",
+        projectId: "project-123",
+        status: MembershipStatus.Active,
       });
       expect(responseStatus).toHaveBeenCalledWith(200);
-      expect(responseJson).toHaveBeenCalledWith(mockUser);
     });
 
     it("should return 404 when user does not exist in project", async () => {
-      (User.findOne as jest.Mock).mockResolvedValue(null);
+      (UserProjectMembership.findOne as jest.Mock).mockReturnValue({
+        populate: jest.fn().mockResolvedValue(null),
+      });
 
       await getUserById(mockRequest as AuthRequest, mockResponse as Response);
 
-      expect(User.findOne).toHaveBeenCalledWith({
-        _id: "mock-user-id",
-        projectIds: "project-123",
-      });
       expect(responseStatus).toHaveBeenCalledWith(404);
-      expect(responseJson).toHaveBeenCalledWith({ message: "User not found" });
+      expect(responseJson).toHaveBeenCalledWith({ message: "User not found in this project" });
     });
 
     it("should handle errors and return status 500", async () => {
       const error = new Error("Database error");
-      (User.findOne as jest.Mock).mockRejectedValue(error);
+      (UserProjectMembership.findOne as jest.Mock).mockReturnValue({
+        populate: jest.fn().mockRejectedValue(error),
+      });
 
       await getUserById(mockRequest as AuthRequest, mockResponse as Response);
 
@@ -136,47 +164,39 @@ describe("User Controller", () => {
   });
 
   describe("updateUserById", () => {
-    it("should update a user scoped to project and return status 200", async () => {
-      const mockUser = {
-        _id: "mock-user-id",
-        email: "updated@example.com",
-        role: UserRole.Manager,
-        projectIds: ["project-123"],
+    it("should update a user and return status 200", async () => {
+      const mockMembership = {
+        _id: "membership-id",
+        role: MembershipRole.Member,
       };
 
-      (User.findOneAndUpdate as jest.Mock).mockResolvedValue(mockUser);
+      const mockUpdatedUser = {
+        _id: "mock-user-id",
+        email: "test@example.com",
+        username: "testuser",
+        toObject: () => ({ _id: "mock-user-id", email: "test@example.com", username: "testuser" }),
+      };
+
+      (UserProjectMembership.findOne as jest.Mock).mockResolvedValue(mockMembership);
+      (User.findByIdAndUpdate as jest.Mock).mockResolvedValue(mockUpdatedUser);
 
       await updateUserById(mockRequest as AuthRequest, mockResponse as Response);
 
-      expect(User.findOneAndUpdate).toHaveBeenCalledWith(
-        { _id: "mock-user-id", projectIds: "project-123" },
-        { email: "test@example.com", role: UserRole.User },
-        { new: true, runValidators: true }
-      );
       expect(responseStatus).toHaveBeenCalledWith(200);
-      expect(responseJson).toHaveBeenCalledWith({
-        message: "User updated",
-        user: mockUser,
-      });
     });
 
     it("should return 404 when user does not exist in project", async () => {
-      (User.findOneAndUpdate as jest.Mock).mockResolvedValue(null);
+      (UserProjectMembership.findOne as jest.Mock).mockResolvedValue(null);
 
       await updateUserById(mockRequest as AuthRequest, mockResponse as Response);
 
-      expect(User.findOneAndUpdate).toHaveBeenCalledWith(
-        { _id: "mock-user-id", projectIds: "project-123" },
-        { email: "test@example.com", role: UserRole.User },
-        { new: true, runValidators: true }
-      );
       expect(responseStatus).toHaveBeenCalledWith(404);
-      expect(responseJson).toHaveBeenCalledWith({ message: "User not found" });
+      expect(responseJson).toHaveBeenCalledWith({ message: "User not found in this project" });
     });
 
     it("should handle errors and return status 500", async () => {
       const error = new Error("Database error");
-      (User.findOneAndUpdate as jest.Mock).mockRejectedValue(error);
+      (UserProjectMembership.findOne as jest.Mock).mockRejectedValue(error);
 
       await updateUserById(mockRequest as AuthRequest, mockResponse as Response);
 
@@ -189,49 +209,45 @@ describe("User Controller", () => {
   });
 
   describe("deleteUserById", () => {
-    it("should delete a user scoped to project and return status 200", async () => {
-      const mockUser = {
-        _id: "mock-user-id",
-        email: "user@example.com",
-        role: UserRole.User,
-        projectIds: ["project-123"],
+    it("should delete a user from project and return status 200", async () => {
+      const mockMembership = {
+        _id: "membership-id",
+        userId: "mock-user-id",
       };
-      (User.findOneAndDelete as jest.Mock).mockResolvedValue(mockUser);
+
+      (UserProjectMembership.findOneAndDelete as jest.Mock).mockResolvedValue(mockMembership);
+      (UserProjectMembership.countDocuments as jest.Mock).mockResolvedValue(1);
 
       await deleteUserById(mockRequest as AuthRequest, mockResponse as Response);
 
-      expect(User.findOneAndDelete).toHaveBeenCalledWith({
-        _id: "mock-user-id",
-        projectIds: "project-123",
+      expect(UserProjectMembership.findOneAndDelete).toHaveBeenCalledWith({
+        userId: "mock-user-id",
+        projectId: "project-123",
       });
       expect(responseStatus).toHaveBeenCalledWith(200);
       expect(responseJson).toHaveBeenCalledWith({
-        message: "User deleted successfully",
+        message: "User removed from project successfully",
       });
     });
 
     it("should return 404 when user does not exist in project", async () => {
-      (User.findOneAndDelete as jest.Mock).mockResolvedValue(null);
+      (UserProjectMembership.findOneAndDelete as jest.Mock).mockResolvedValue(null);
 
       await deleteUserById(mockRequest as AuthRequest, mockResponse as Response);
 
-      expect(User.findOneAndDelete).toHaveBeenCalledWith({
-        _id: "mock-user-id",
-        projectIds: "project-123",
-      });
       expect(responseStatus).toHaveBeenCalledWith(404);
-      expect(responseJson).toHaveBeenCalledWith({ message: "User not found" });
+      expect(responseJson).toHaveBeenCalledWith({ message: "User not found in this project" });
     });
 
     it("should handle errors and return status 500", async () => {
       const error = new Error("Database error");
-      (User.findOneAndDelete as jest.Mock).mockRejectedValue(error);
+      (UserProjectMembership.findOneAndDelete as jest.Mock).mockRejectedValue(error);
 
       await deleteUserById(mockRequest as AuthRequest, mockResponse as Response);
 
       expect(responseStatus).toHaveBeenCalledWith(500);
       expect(responseJson).toHaveBeenCalledWith({
-        message: "Error deleting user",
+        message: "Error removing user",
         error,
       });
     });

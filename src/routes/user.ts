@@ -6,15 +6,15 @@ import {
   getUserById,
   updateUserById,
 } from "../controllers";
-import { UserRole } from "../types";
+import { MembershipRole } from "../types";
 
 const router = Router();
 
 router.get("/", authenticate, getAllUsers);
 router
   .route("/:id")
-  .get(authenticate, authoriseRole([UserRole.Admin]), getUserById)
-  .put(authenticate, authoriseRole([UserRole.Admin]), updateUserById)
-  .delete(authenticate, authoriseRole([UserRole.Admin]), deleteUserById);
+  .get(authenticate, authoriseRole([MembershipRole.Admin]), getUserById)
+  .put(authenticate, authoriseRole([MembershipRole.Admin]), updateUserById)
+  .delete(authenticate, authoriseRole([MembershipRole.Admin]), deleteUserById);
 
 export default router;
