@@ -26,7 +26,8 @@ app.get("/", (_, res) => {
 
 connectToDB();
 
-if (process.env.NODE_ENV !== "production") {
+// Only skip listening on Vercel (serverless)
+if (!process.env.VERCEL) {
   app.listen(PORT, () => {
     console.log(`Heimdall is guarding on port ${PORT}`);
   });
