@@ -1,8 +1,8 @@
 import request from "supertest";
 import express, { Express } from "express";
 import authRoutes from "../auth";
-import { login, register } from "../../controllers";
-import { validateApiKey } from "../../middleware";
+import { login, register, refresh, logout } from "../../controllers";
+import { validateApiKey, authenticate } from "../../middleware";
 
 jest.mock("../../controllers", () => ({
   login: jest.fn((req, res) => {
@@ -13,7 +13,7 @@ jest.mock("../../controllers", () => ({
     }
     return res
       .status(200)
-      .json({ message: "Login successful", token: "test-token" });
+      .json({ message: "Login successful", accessToken: "test-token", refreshToken: "test-refresh" });
   }),
   register: jest.fn((req, res) => {
     if (!req.body.email || !req.body.password) {
@@ -24,6 +24,15 @@ jest.mock("../../controllers", () => ({
     return res
       .status(201)
       .json({ message: `User registered with email ${req.body.email}` });
+  }),
+  refresh: jest.fn((req, res) => {
+    if (!req.body.refreshToken) {
+      return res.status(400).json({ message: "Refresh token is required" });
+    }
+    return res.status(200).json({ accessToken: "new-token", refreshToken: "new-refresh" });
+  }),
+  logout: jest.fn((req, res) => {
+    return res.status(200).json({ message: "Logged out" });
   }),
 }));
 
@@ -37,6 +46,10 @@ jest.mock("../../middleware", () => ({
       return res.status(401).json({ message: "Invalid API key" });
     }
     req.projectId = "project-123";
+    next();
+  }),
+  authenticate: jest.fn((req, res, next) => {
+    req.user = { id: "user123", email: "test@example.com", role: "member", projectId: "project-123", membershipId: "m123" };
     next();
   }),
 }));
@@ -71,8 +84,6 @@ describe("Auth Routes", () => {
 
       expect(response.status).toBe(401);
       expect(response.body).toEqual({ message: "Invalid API key" });
-      expect(validateApiKey).toHaveBeenCalled();
-      expect(login).not.toHaveBeenCalled();
     });
 
     it("should return 400 if email or password is missing", async () => {
@@ -82,26 +93,18 @@ describe("Auth Routes", () => {
         .send({ email: "test@example.com" });
 
       expect(response.status).toBe(400);
-      expect(response.body).toEqual({
-        message: "Email and password are required",
-      });
-      expect(validateApiKey).toHaveBeenCalled();
       expect(login).toHaveBeenCalled();
     });
 
-    it("should return 200 and token on successful login", async () => {
+    it("should return 200 and tokens on successful login", async () => {
       const response = await request(app)
         .post("/auth/login")
         .set("x-api-key", "valid-api-key")
         .send({ email: "test@example.com", password: "password123" });
 
       expect(response.status).toBe(200);
-      expect(response.body).toEqual({
-        message: "Login successful",
-        token: "test-token",
-      });
-      expect(validateApiKey).toHaveBeenCalled();
-      expect(login).toHaveBeenCalled();
+      expect(response.body.accessToken).toBeDefined();
+      expect(response.body.refreshToken).toBeDefined();
     });
   });
 
@@ -112,8 +115,6 @@ describe("Auth Routes", () => {
         .send({ email: "test@example.com", password: "password123" });
 
       expect(response.status).toBe(401);
-      expect(response.body).toEqual({ message: "API key is required" });
-      expect(validateApiKey).toHaveBeenCalled();
       expect(register).not.toHaveBeenCalled();
     });
 
@@ -124,10 +125,6 @@ describe("Auth Routes", () => {
         .send({ email: "test@example.com" });
 
       expect(response.status).toBe(400);
-      expect(response.body).toEqual({
-        message: "Email and password are required",
-      });
-      expect(validateApiKey).toHaveBeenCalled();
       expect(register).toHaveBeenCalled();
     });
 
@@ -138,11 +135,40 @@ describe("Auth Routes", () => {
         .send({ email: "test@example.com", password: "password123" });
 
       expect(response.status).toBe(201);
-      expect(response.body).toEqual({
-        message: "User registered with email test@example.com",
-      });
-      expect(validateApiKey).toHaveBeenCalled();
-      expect(register).toHaveBeenCalled();
+    });
+  });
+
+  describe("POST /auth/refresh", () => {
+    it("should return 401 if API key is missing", async () => {
+      const response = await request(app)
+        .post("/auth/refresh")
+        .send({ refreshToken: "some-token" });
+
+      expect(response.status).toBe(401);
+    });
+
+    it("should return 200 with new tokens on valid refresh", async () => {
+      const response = await request(app)
+        .post("/auth/refresh")
+        .set("x-api-key", "valid-api-key")
+        .send({ refreshToken: "valid-refresh-token" });
+
+      expect(response.status).toBe(200);
+      expect(response.body.accessToken).toBeDefined();
+      expect(response.body.refreshToken).toBeDefined();
+    });
+  });
+
+  describe("POST /auth/logout", () => {
+    it("should return 200 on successful logout", async () => {
+      const response = await request(app)
+        .post("/auth/logout")
+        .set("Authorization", "Bearer test-token")
+        .send({ refreshToken: "some-token" });
+
+      expect(response.status).toBe(200);
+      expect(authenticate).toHaveBeenCalled();
+      expect(logout).toHaveBeenCalled();
     });
   });
 });

@@ -1,4 +1,5 @@
 import express, { Express } from "express";
+import cors from "cors";
 import dotenv from "dotenv";
 import { connectToDB } from "./db/connect";
 import authRoutes from "./routes/auth";
@@ -14,6 +15,7 @@ if (!process.env.JWT_SECRET) {
 const app: Express = express();
 const PORT = process.env.PORT || 7001;
 
+app.use(cors());
 app.use(express.json());
 
 // Routes

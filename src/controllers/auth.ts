@@ -1,8 +1,50 @@
 import { Response } from "express";
-import { User, UserProjectMembership } from "../models";
+import crypto from "crypto";
+import { User, UserProjectMembership, RefreshToken } from "../models";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
-import { ApiKeyRequest, MembershipRole, MembershipStatus } from "../types";
+import { ApiKeyRequest, AuthRequest, MembershipRole, MembershipStatus } from "../types";
+
+const ACCESS_TOKEN_EXPIRY = "15m";
+const REFRESH_TOKEN_EXPIRY_DAYS = 7;
+
+const generateRefreshToken = (): string => {
+  return crypto.randomBytes(64).toString("hex");
+};
+
+const hashToken = (token: string): string => {
+  return crypto.createHash("sha256").update(token).digest("hex");
+};
+
+const createTokenPair = async (
+  userId: string,
+  email: string,
+  role: string,
+  projectId: string,
+  membershipId: string
+) => {
+  const accessToken = jwt.sign(
+    { id: userId, email, role, projectId, membershipId },
+    process.env.JWT_SECRET as string,
+    { expiresIn: ACCESS_TOKEN_EXPIRY }
+  );
+
+  const refreshTokenRaw = generateRefreshToken();
+  const refreshTokenHash = hashToken(refreshTokenRaw);
+
+  const expiresAt = new Date();
+  expiresAt.setDate(expiresAt.getDate() + REFRESH_TOKEN_EXPIRY_DAYS);
+
+  await RefreshToken.create({
+    token: refreshTokenHash,
+    userId,
+    projectId,
+    membershipId,
+    expiresAt,
+  });
+
+  return { accessToken, refreshToken: refreshTokenRaw, expiresAt };
+};
 
 export const login = async (req: ApiKeyRequest, res: Response) => {
   if (!req?.body?.email || !req?.body?.password) {
@@ -37,21 +79,19 @@ export const login = async (req: ApiKeyRequest, res: Response) => {
       return;
     }
 
-    const token = jwt.sign(
-      {
-        id: user._id,
-        email: user.email,
-        role: membership.role,
-        projectId,
-        membershipId: membership._id,
-      },
-      process.env.JWT_SECRET as string,
-      { expiresIn: "1h" }
+    const { accessToken, refreshToken, expiresAt } = await createTokenPair(
+      user._id.toString(),
+      user.email,
+      membership.role,
+      projectId,
+      membership._id.toString()
     );
 
     res.status(200).json({
       message: "Login successful",
-      token,
+      accessToken,
+      refreshToken,
+      refreshTokenExpiresAt: expiresAt,
       user: {
         id: user._id,
         username: user.username,
@@ -60,6 +100,102 @@ export const login = async (req: ApiKeyRequest, res: Response) => {
     });
   } catch (error) {
     res.status(500).json({ message: "Login failed", error: error });
+  }
+};
+
+export const refresh = async (req: ApiKeyRequest, res: Response) => {
+  const { refreshToken } = req.body;
+  const projectId = req.projectId!;
+
+  if (!refreshToken) {
+    res.status(400).json({ message: "Refresh token is required" });
+    return;
+  }
+
+  try {
+    const tokenHash = hashToken(refreshToken);
+
+    const storedToken = await RefreshToken.findOne({
+      token: tokenHash,
+      projectId,
+      isRevoked: false,
+    });
+
+    if (!storedToken) {
+      res.status(401).json({ message: "Invalid refresh token" });
+      return;
+    }
+
+    if (storedToken.expiresAt < new Date()) {
+      res.status(401).json({ message: "Refresh token expired" });
+      return;
+    }
+
+    // Revoke old refresh token (rotation)
+    storedToken.isRevoked = true;
+    await storedToken.save();
+
+    // Verify user and membership still exist and are active
+    const membership = await UserProjectMembership.findOne({
+      _id: storedToken.membershipId,
+      status: MembershipStatus.Active,
+    });
+
+    if (!membership) {
+      res.status(403).json({ message: "Membership no longer active" });
+      return;
+    }
+
+    const user = await User.findById(storedToken.userId);
+    if (!user) {
+      res.status(401).json({ message: "User not found" });
+      return;
+    }
+
+    // Issue new token pair
+    const { accessToken, refreshToken: newRefreshToken, expiresAt } = await createTokenPair(
+      user._id.toString(),
+      user.email,
+      membership.role,
+      projectId,
+      membership._id.toString()
+    );
+
+    res.status(200).json({
+      accessToken,
+      refreshToken: newRefreshToken,
+      refreshTokenExpiresAt: expiresAt,
+    });
+  } catch (error) {
+    res.status(500).json({ message: "Token refresh failed", error });
+  }
+};
+
+export const logout = async (req: AuthRequest, res: Response) => {
+  const { refreshToken } = req.body;
+
+  if (!refreshToken) {
+    res.status(400).json({ message: "Refresh token is required" });
+    return;
+  }
+
+  try {
+    const tokenHash = hashToken(refreshToken);
+
+    const storedToken = await RefreshToken.findOneAndUpdate(
+      { token: tokenHash, isRevoked: false },
+      { isRevoked: true },
+      { new: true }
+    );
+
+    if (!storedToken) {
+      res.status(200).json({ message: "Logged out" });
+      return;
+    }
+
+    res.status(200).json({ message: "Logged out" });
+  } catch (error) {
+    res.status(500).json({ message: "Logout failed", error });
   }
 };
 
