@@ -107,7 +107,6 @@ describe("User Controller", () => {
       expect(responseStatus).toHaveBeenCalledWith(500);
       expect(responseJson).toHaveBeenCalledWith({
         message: "Error fetching users",
-        error,
       });
     });
   });
@@ -158,7 +157,6 @@ describe("User Controller", () => {
       expect(responseStatus).toHaveBeenCalledWith(500);
       expect(responseJson).toHaveBeenCalledWith({
         message: "Error fetching user",
-        error,
       });
     });
   });
@@ -203,7 +201,6 @@ describe("User Controller", () => {
       expect(responseStatus).toHaveBeenCalledWith(500);
       expect(responseJson).toHaveBeenCalledWith({
         message: "Error updating user",
-        error,
       });
     });
   });
@@ -216,7 +213,6 @@ describe("User Controller", () => {
       };
 
       (UserProjectMembership.findOneAndDelete as jest.Mock).mockResolvedValue(mockMembership);
-      (UserProjectMembership.countDocuments as jest.Mock).mockResolvedValue(1);
 
       await deleteUserById(mockRequest as AuthRequest, mockResponse as Response);
 
@@ -248,7 +244,6 @@ describe("User Controller", () => {
       expect(responseStatus).toHaveBeenCalledWith(500);
       expect(responseJson).toHaveBeenCalledWith({
         message: "Error removing user",
-        error,
       });
     });
   });

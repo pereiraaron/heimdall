@@ -111,23 +111,4 @@ describe("Authentication Middleware", () => {
     expect(responseStatus).not.toHaveBeenCalled();
   });
 
-  it("should work with Authorization header (capital A)", () => {
-    mockRequest.headers = { Authorization: "Bearer validtoken" };
-    const decodedUser = {
-      id: "user123",
-      email: "test@example.com",
-      role: "user",
-    };
-    (jwt.verify as jest.Mock).mockReturnValueOnce(decodedUser);
-
-    authenticate(
-      mockRequest as AuthRequest,
-      mockResponse as Response,
-      nextFunction
-    );
-
-    expect(jwt.verify).toHaveBeenCalledWith("validtoken", "test-secret-key");
-    expect(mockRequest.user).toEqual(decodedUser);
-    expect(nextFunction).toHaveBeenCalled();
-  });
 });

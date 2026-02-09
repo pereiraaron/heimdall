@@ -1,6 +1,6 @@
 import { Response } from "express";
 import { login, register, refresh, logout } from "../auth";
-import { User, UserProjectMembership, RefreshToken } from "../../models";
+import { User, UserProjectMembership, RefreshToken, Project, PasskeyCredential } from "../../models";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import { ApiKeyRequest, AuthRequest, MembershipRole, MembershipStatus } from "../../types";
@@ -21,6 +21,12 @@ jest.mock("../../models", () => ({
     create: jest.fn(),
     findOne: jest.fn(),
     findOneAndUpdate: jest.fn(),
+  },
+  Project: {
+    findById: jest.fn(),
+  },
+  PasskeyCredential: {
+    exists: jest.fn(),
   },
 }));
 
@@ -143,6 +149,7 @@ describe("Auth Controller", () => {
       (UserProjectMembership.findOne as jest.Mock).mockResolvedValueOnce(mockMembership);
       (jwt.sign as jest.Mock).mockReturnValueOnce("test-access-token");
       (RefreshToken.create as jest.Mock).mockResolvedValueOnce({});
+      (Project.findById as jest.Mock).mockResolvedValueOnce({ passkeyPolicy: "optional" });
 
       await login(mockRequest as ApiKeyRequest, mockResponse as Response);
 

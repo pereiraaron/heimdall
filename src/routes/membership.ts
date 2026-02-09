@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { authenticate, requireRole } from "../middleware";
+import { authenticate, authoriseRole } from "../middleware";
 import {
   getProjectMembers,
   getMemberById,
@@ -26,21 +26,21 @@ router.get("/:userId", getMemberById);
 // Invite a new member (Admin+)
 router.post(
   "/invite",
-  requireRole([MembershipRole.Admin, MembershipRole.Owner]),
+  authoriseRole([MembershipRole.Admin, MembershipRole.Owner]),
   inviteMember
 );
 
 // Update member role (Admin+)
 router.put(
   "/:userId/role",
-  requireRole([MembershipRole.Admin, MembershipRole.Owner]),
+  authoriseRole([MembershipRole.Admin, MembershipRole.Owner]),
   updateMemberRole
 );
 
 // Remove a member (Admin+)
 router.delete(
   "/:userId",
-  requireRole([MembershipRole.Admin, MembershipRole.Owner]),
+  authoriseRole([MembershipRole.Admin, MembershipRole.Owner]),
   removeMember
 );
 
