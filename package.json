@@ -5,6 +5,9 @@
   "main": "src/index.ts",
   "author": "Aron Pereira",
   "license": "MIT",
+  "engines": {
+    "node": ">=22"
+  },
   "scripts": {
     "start": "node dist/index.js",
     "build": "rm -rf dist && tsc",
