@@ -22,7 +22,7 @@ export const getAllUsers = async (req: AuthRequest, res: Response) => {
 
     res.status(200).json(users);
   } catch (error) {
-    res.status(500).json({ message: "Error fetching users", error });
+    res.status(500).json({ message: "Error fetching users" });
   }
 };
 
@@ -53,7 +53,7 @@ export const getUserById = async (req: AuthRequest, res: Response) => {
 
     res.status(200).json(user);
   } catch (error) {
-    res.status(500).json({ message: "Error fetching user", error });
+    res.status(500).json({ message: "Error fetching user" });
   }
 };
 
@@ -94,7 +94,7 @@ export const updateUserById = async (req: AuthRequest, res: Response) => {
       },
     });
   } catch (error) {
-    res.status(500).json({ message: "Error updating user", error });
+    res.status(500).json({ message: "Error updating user" });
   }
 };
 
@@ -114,17 +114,8 @@ export const deleteUserById = async (req: AuthRequest, res: Response) => {
       return;
     }
 
-    // Check if user has any other memberships
-    const otherMemberships = await UserProjectMembership.countDocuments({ userId });
-
-    if (otherMemberships === 0) {
-      // Optionally delete user if they have no other memberships
-      // Uncomment the next line if you want to delete orphaned users
-      // await User.findByIdAndDelete(userId);
-    }
-
     res.status(200).json({ message: "User removed from project successfully" });
   } catch (error) {
-    res.status(500).json({ message: "Error removing user", error });
+    res.status(500).json({ message: "Error removing user" });
   }
 };

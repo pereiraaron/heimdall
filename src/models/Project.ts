@@ -15,6 +15,11 @@ const projectSchema = new Schema<IProject>(
       required: true,
       default: () => `hm_${crypto.randomBytes(32).toString("hex")}`,
     },
+    passkeyPolicy: {
+      type: String,
+      enum: ["optional", "encouraged"],
+      default: "optional",
+    },
   },
   {
     timestamps: true,

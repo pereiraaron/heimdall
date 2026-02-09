@@ -50,23 +50,3 @@ export const validateMembership = (requiredRoles?: MembershipRole[]) => {
   };
 };
 
-export const requireRole = (roles: MembershipRole[]) => {
-  return (req: AuthRequest, res: Response, next: NextFunction) => {
-    const userRole = req.user?.role as MembershipRole;
-
-    if (!userRole) {
-      res.status(403).json({ message: "Access denied. No role provided." });
-      return;
-    }
-
-    const userRoleLevel = ROLE_HIERARCHY[userRole];
-    const minRequiredLevel = Math.min(...roles.map((r) => ROLE_HIERARCHY[r]));
-
-    if (userRoleLevel < minRequiredLevel) {
-      res.status(403).json({ message: "Access denied. Insufficient permissions." });
-      return;
-    }
-
-    next();
-  };
-};

@@ -1,6 +1,6 @@
 import { Response } from "express";
 import crypto from "crypto";
-import { User, UserProjectMembership, RefreshToken } from "../models";
+import { User, UserProjectMembership, RefreshToken, PasskeyCredential, Project } from "../models";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import { ApiKeyRequest, AuthRequest, MembershipRole, MembershipStatus } from "../types";
@@ -16,7 +16,7 @@ const hashToken = (token: string): string => {
   return crypto.createHash("sha256").update(token).digest("hex");
 };
 
-const createTokenPair = async (
+export const createTokenPair = async (
   userId: string,
   email: string,
   role: string,
@@ -87,6 +87,17 @@ export const login = async (req: ApiKeyRequest, res: Response) => {
       membership._id.toString()
     );
 
+    // Check if passkey setup should be nudged
+    let passkeySetupRequired: boolean | undefined;
+    const project = await Project.findById(projectId);
+    if (project?.passkeyPolicy === "encouraged") {
+      const hasPasskeys = await PasskeyCredential.exists({ userId: user._id });
+      const optedOut = membership.metadata?.preferences?.passkeyOptedOut === true;
+      if (!hasPasskeys && !optedOut) {
+        passkeySetupRequired = true;
+      }
+    }
+
     res.status(200).json({
       message: "Login successful",
       accessToken,
@@ -97,9 +108,10 @@ export const login = async (req: ApiKeyRequest, res: Response) => {
         username: user.username,
         role: membership.role,
       },
+      ...(passkeySetupRequired && { passkeySetupRequired }),
     });
   } catch (error) {
-    res.status(500).json({ message: "Login failed", error: error });
+    res.status(500).json({ message: "Login failed" });
   }
 };
 
@@ -167,7 +179,7 @@ export const refresh = async (req: ApiKeyRequest, res: Response) => {
       refreshTokenExpiresAt: expiresAt,
     });
   } catch (error) {
-    res.status(500).json({ message: "Token refresh failed", error });
+    res.status(500).json({ message: "Token refresh failed" });
   }
 };
 
@@ -195,7 +207,7 @@ export const logout = async (req: AuthRequest, res: Response) => {
 
     res.status(200).json({ message: "Logged out" });
   } catch (error) {
-    res.status(500).json({ message: "Logout failed", error });
+    res.status(500).json({ message: "Logout failed" });
   }
 };
 
@@ -259,6 +271,6 @@ export const register = async (req: ApiKeyRequest, res: Response) => {
 
     res.status(201).json({ message: `User registered with email ${email}` });
   } catch (error) {
-    res.status(500).json({ message: "Registration failed", error: error });
+    res.status(500).json({ message: "Registration failed" });
   }
 };

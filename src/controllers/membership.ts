@@ -1,5 +1,7 @@
 import { Response } from "express";
+import crypto from "crypto";
 import { Types } from "mongoose";
+import bcrypt from "bcrypt";
 import { User, UserProjectMembership } from "../models";
 import {
   AuthRequest,
@@ -19,7 +21,7 @@ export const getProjectMembers = async (req: AuthRequest, res: Response) => {
 
     res.status(200).json(memberships);
   } catch (error) {
-    res.status(500).json({ message: "Error fetching members", error });
+    res.status(500).json({ message: "Error fetching members" });
   }
 };
 
@@ -40,7 +42,7 @@ export const getMemberById = async (req: AuthRequest, res: Response) => {
 
     res.status(200).json(membership);
   } catch (error) {
-    res.status(500).json({ message: "Error fetching member", error });
+    res.status(500).json({ message: "Error fetching member" });
   }
 };
 
@@ -65,7 +67,10 @@ export const inviteMember = async (req: AuthRequest, res: Response) => {
     // Find or create user
     let user = await User.findOne({ email });
     if (!user) {
-      user = await User.create({ email, password: "pending-invite" });
+      // Generate a random password for invited users — they must reset it or use passkey
+      const tempPassword = crypto.randomBytes(32).toString("hex");
+      const hashedPassword = await bcrypt.hash(tempPassword, 10);
+      user = await User.create({ email, password: hashedPassword });
     }
 
     // Check if membership already exists
@@ -102,7 +107,7 @@ export const inviteMember = async (req: AuthRequest, res: Response) => {
 
     res.status(201).json({ message: "Invitation sent", membership });
   } catch (error) {
-    res.status(500).json({ message: "Error inviting member", error });
+    res.status(500).json({ message: "Error inviting member" });
   }
 };
 
@@ -151,7 +156,7 @@ export const updateMemberRole = async (req: AuthRequest, res: Response) => {
 
     res.status(200).json({ message: "Role updated", membership });
   } catch (error) {
-    res.status(500).json({ message: "Error updating role", error });
+    res.status(500).json({ message: "Error updating role" });
   }
 };
 
@@ -194,7 +199,7 @@ export const removeMember = async (req: AuthRequest, res: Response) => {
 
     res.status(200).json({ message: "Member removed" });
   } catch (error) {
-    res.status(500).json({ message: "Error removing member", error });
+    res.status(500).json({ message: "Error removing member" });
   }
 };
 
@@ -223,7 +228,7 @@ export const leaveProject = async (req: AuthRequest, res: Response) => {
 
     res.status(200).json({ message: "Successfully left the project" });
   } catch (error) {
-    res.status(500).json({ message: "Error leaving project", error });
+    res.status(500).json({ message: "Error leaving project" });
   }
 };
 
@@ -249,7 +254,7 @@ export const acceptInvitation = async (req: AuthRequest, res: Response) => {
 
     res.status(200).json({ message: "Invitation accepted", membership });
   } catch (error) {
-    res.status(500).json({ message: "Error accepting invitation", error });
+    res.status(500).json({ message: "Error accepting invitation" });
   }
 };
 
@@ -272,6 +277,6 @@ export const updateMemberMetadata = async (req: AuthRequest, res: Response) => {
 
     res.status(200).json({ message: "Metadata updated", membership });
   } catch (error) {
-    res.status(500).json({ message: "Error updating metadata", error });
+    res.status(500).json({ message: "Error updating metadata" });
   }
 };

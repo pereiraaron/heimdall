@@ -7,8 +7,7 @@ export const authenticate = (
   res: Response,
   next: NextFunction
 ) => {
-  const authHeader =
-    req.headers.authorization || (req.headers.Authorization as string);
+  const authHeader = req.headers.authorization;
 
   if (!authHeader?.startsWith("Bearer ")) {
     res.status(401).json({ message: "Missing or invalid token" });
