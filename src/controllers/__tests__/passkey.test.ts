@@ -15,6 +15,7 @@ import {
   PasskeyCredential,
   WebAuthnChallenge,
   RefreshToken,
+  Project,
 } from "../../models";
 import { AuthRequest, ApiKeyRequest, MembershipRole, MembershipStatus } from "../../types";
 
@@ -40,6 +41,9 @@ jest.mock("../../models", () => ({
   },
   RefreshToken: {
     create: jest.fn(),
+  },
+  Project: {
+    findById: jest.fn(),
   },
 }));
 
@@ -75,6 +79,9 @@ describe("Passkey Controller", () => {
       WEBAUTHN_ORIGIN: "http://localhost:3000",
     };
     jest.clearAllMocks();
+
+    // Default: project has no per-project WebAuthn config, falls back to env vars
+    (Project.findById as jest.Mock).mockResolvedValue(null);
   });
 
   afterAll(() => {
@@ -90,6 +97,7 @@ describe("Passkey Controller", () => {
         projectId: "project-123",
         membershipId: "membership123",
       },
+      get: jest.fn(),
     };
 
     it("should return 200 with registration options", async () => {
@@ -240,6 +248,7 @@ describe("Passkey Controller", () => {
       const mockReq: Partial<ApiKeyRequest> = {
         body: {},
         projectId: "project-123",
+        get: jest.fn(),
       };
 
       simpleWebAuthn.generateAuthenticationOptions.mockResolvedValueOnce({
@@ -267,6 +276,7 @@ describe("Passkey Controller", () => {
       const mockReq: Partial<ApiKeyRequest> = {
         body: { email: "test@example.com" },
         projectId: "project-123",
+        get: jest.fn(),
       };
 
       (User.findOne as jest.Mock).mockResolvedValueOnce({
@@ -295,6 +305,7 @@ describe("Passkey Controller", () => {
       const mockReq: Partial<ApiKeyRequest> = {
         body: {},
         projectId: "project-123",
+        get: jest.fn(),
       };
 
       simpleWebAuthn.generateAuthenticationOptions.mockRejectedValueOnce(

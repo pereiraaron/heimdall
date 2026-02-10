@@ -20,6 +20,12 @@ const projectSchema = new Schema<IProject>(
       enum: ["optional", "encouraged"],
       default: "optional",
     },
+    webauthnRpIds: {
+      type: [String],
+    },
+    webauthnOrigins: {
+      type: [String],
+    },
   },
   {
     timestamps: true,

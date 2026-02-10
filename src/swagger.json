@@ -16,7 +16,7 @@
   ],
   "tags": [
     { "name": "Auth", "description": "Password-based authentication" },
-    { "name": "Passkey", "description": "WebAuthn/FIDO2 passkey authentication" },
+    { "name": "Passkey", "description": "WebAuthn/FIDO2 passkey authentication. RP ID and allowed origins are configured per-project (webauthnRpId, webauthnOrigins fields on Project), falling back to server-level env vars." },
     { "name": "Passkey Management", "description": "Manage registered passkeys" },
     { "name": "Users", "description": "User management (project-scoped)" },
     { "name": "Memberships", "description": "Project membership management" }

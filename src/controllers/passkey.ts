@@ -10,18 +10,53 @@ import {
   UserProjectMembership,
   PasskeyCredential,
   WebAuthnChallenge,
+  Project,
 } from "../models";
 import { createTokenPair } from "./auth";
 import { AuthRequest, ApiKeyRequest, MembershipStatus } from "../types";
 
-const RP_ID = process.env.WEBAUTHN_RP_ID || "localhost";
-const RP_NAME = process.env.WEBAUTHN_RP_NAME || "Heimdall";
-const ORIGIN = process.env.WEBAUTHN_ORIGIN || "http://localhost:3000";
+const DEFAULT_RP_ID = process.env.WEBAUTHN_RP_ID || "localhost";
+const DEFAULT_RP_NAME = process.env.WEBAUTHN_RP_NAME || "Heimdall";
+const DEFAULT_ORIGIN = process.env.WEBAUTHN_ORIGIN || "http://localhost:3000";
 const CHALLENGE_TTL_SECONDS = 60;
 
-const getExpectedOrigins = (): string | string[] => {
-  const origins = ORIGIN.split(",").map((o) => o.trim());
-  return origins.length === 1 ? origins[0] : origins;
+const getWebAuthnConfig = async (projectId: string, requestOrigin?: string) => {
+  const project = await Project.findById(projectId);
+  const rpName = project?.name || DEFAULT_RP_NAME;
+
+  const rpIds = project?.webauthnRpIds?.length
+    ? project.webauthnRpIds
+    : [DEFAULT_RP_ID];
+
+  // Resolve a single RP ID from the request origin for options generation.
+  // The RP ID must be a registrable domain suffix of the origin hostname.
+  let rpId = rpIds[0];
+  if (requestOrigin && rpIds.length > 1) {
+    try {
+      const hostname = new URL(requestOrigin).hostname;
+      const match = rpIds.find(
+        (id) => hostname === id || hostname.endsWith(`.${id}`)
+      );
+      if (match) rpId = match;
+    } catch {
+      // Invalid origin, use first RP ID
+    }
+  }
+
+  let origins: string | string[];
+  if (project?.webauthnOrigins && project.webauthnOrigins.length > 0) {
+    origins = project.webauthnOrigins.length === 1
+      ? project.webauthnOrigins[0]
+      : project.webauthnOrigins;
+  } else {
+    const fallback = DEFAULT_ORIGIN.split(",").map((o) => o.trim());
+    origins = fallback.length === 1 ? fallback[0] : fallback;
+  }
+
+  // For verification, pass all RP IDs so credentials from any domain are accepted
+  const expectedRpIds = rpIds.length === 1 ? rpIds[0] : rpIds;
+
+  return { rpId, rpName, origins, expectedRpIds };
 };
 
 export const generateRegistrationOptions = async (
@@ -30,6 +65,7 @@ export const generateRegistrationOptions = async (
 ) => {
   try {
     const userId = req.user!.id;
+    const projectId = req.user!.projectId;
     const user = await User.findById(userId);
 
     if (!user) {
@@ -37,11 +73,13 @@ export const generateRegistrationOptions = async (
       return;
     }
 
+    const requestOrigin = req.get("origin");
+    const { rpId, rpName } = await getWebAuthnConfig(projectId, requestOrigin);
     const existingCredentials = await PasskeyCredential.find({ userId });
 
     const options = await generateRegOptions({
-      rpName: RP_NAME,
-      rpID: RP_ID,
+      rpName,
+      rpID: rpId,
       userID: Buffer.from(userId),
       userName: user.email,
       attestationType: "none",
@@ -82,6 +120,8 @@ export const verifyRegistration = async (
   }
 
   try {
+    const { expectedRpIds, origins } = await getWebAuthnConfig(req.user!.projectId);
+
     const challenge = await WebAuthnChallenge.findOneAndDelete({
       _id: challengeId,
       userId: req.user!.id,
@@ -95,8 +135,8 @@ export const verifyRegistration = async (
     const verification = await verifyRegistrationResponse({
       response: credential,
       expectedChallenge: challenge.challenge,
-      expectedOrigin: getExpectedOrigins(),
-      expectedRPID: RP_ID,
+      expectedOrigin: origins,
+      expectedRPID: expectedRpIds,
     });
 
     if (!verification.verified || !verification.registrationInfo) {
@@ -142,6 +182,8 @@ export const generateAuthenticationOptions = async (
   res: Response
 ) => {
   try {
+    const requestOrigin = req.get("origin");
+    const { rpId } = await getWebAuthnConfig(req.projectId!, requestOrigin);
     const { email } = req.body || {};
     let allowCredentials: { id: string; transports?: AuthenticatorTransport[] }[] | undefined;
     let userId: string | undefined;
@@ -159,7 +201,7 @@ export const generateAuthenticationOptions = async (
     }
 
     const options = await generateAuthOptions({
-      rpID: RP_ID,
+      rpID: rpId,
       userVerification: "preferred",
       allowCredentials,
     });
@@ -192,6 +234,8 @@ export const verifyAuthentication = async (
   }
 
   try {
+    const { expectedRpIds, origins } = await getWebAuthnConfig(projectId);
+
     const challenge = await WebAuthnChallenge.findOneAndDelete({
       _id: challengeId,
     });
@@ -212,8 +256,8 @@ export const verifyAuthentication = async (
     const verification = await verifyAuthenticationResponse({
       response: credential,
       expectedChallenge: challenge.challenge,
-      expectedOrigin: getExpectedOrigins(),
-      expectedRPID: RP_ID,
+      expectedOrigin: origins,
+      expectedRPID: expectedRpIds,
       authenticator: {
         credentialID: storedCredential.credentialId,
         credentialPublicKey: new Uint8Array(storedCredential.publicKey),
