@@ -1,9 +1,11 @@
 import { Response } from "express";
 import crypto from "crypto";
-import { User, UserProjectMembership, RefreshToken, PasskeyCredential, Project } from "../models";
+import { User, UserProjectMembership, RefreshToken, PasskeyCredential, Project } from "@models";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
-import { ApiKeyRequest, AuthRequest, MembershipRole, MembershipStatus } from "../types";
+import { ApiKeyRequest, AuthRequest, MembershipRole, MembershipStatus } from "@types";
+import { GRANT_ACCESS_TO_ALL_PROJECTS } from "@config/flags";
+import { grantAllProjectsAccess } from "@services/grantAllProjectsAccess";
 
 const ACCESS_TOKEN_EXPIRY = "15m";
 const REFRESH_TOKEN_EXPIRY_DAYS = 7;
@@ -57,6 +59,11 @@ export const login = async (req: ApiKeyRequest, res: Response) => {
   try {
     const user = await User.findOne({ email }).select("+password");
     if (!user) {
+      res.status(401).json({ message: "Invalid credentials" });
+      return;
+    }
+
+    if (!user.password) {
       res.status(401).json({ message: "Invalid credentials" });
       return;
     }
@@ -236,6 +243,10 @@ export const register = async (req: ApiKeyRequest, res: Response) => {
           return;
         }
         // Reactivate suspended/pending membership
+        if (!user.password) {
+          res.status(401).json({ message: "Invalid credentials" });
+          return;
+        }
         const isPasswordValid = await bcrypt.compare(password, user.password);
         if (!isPasswordValid) {
           res.status(401).json({ message: "Invalid credentials" });
@@ -249,6 +260,10 @@ export const register = async (req: ApiKeyRequest, res: Response) => {
       }
 
       // Validate password for existing user joining new project
+      if (!user.password) {
+        res.status(401).json({ message: "Invalid credentials" });
+        return;
+      }
       const isPasswordValid = await bcrypt.compare(password, user.password);
       if (!isPasswordValid) {
         res.status(401).json({ message: "Invalid credentials" });
@@ -268,6 +283,10 @@ export const register = async (req: ApiKeyRequest, res: Response) => {
       status: MembershipStatus.Active,
       joinedAt: new Date(),
     });
+
+    if (GRANT_ACCESS_TO_ALL_PROJECTS) {
+      await grantAllProjectsAccess(user._id.toString());
+    }
 
     res.status(201).json({ message: `User registered with email ${email}` });
   } catch (error) {

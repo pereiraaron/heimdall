@@ -7,6 +7,7 @@ import authRoutes from "./routes/auth";
 import userRoutes from "./routes/user";
 import membershipRoutes from "./routes/membership";
 import passkeyRoutes from "./routes/passkey";
+import socialAuthRoutes from "./routes/socialAuth";
 
 dotenv.config();
 
@@ -41,6 +42,7 @@ app.use("/api/auth", authRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/memberships", membershipRoutes);
 app.use("/api/auth/passkey", passkeyRoutes);
+app.use("/api/auth/social", socialAuthRoutes);
 
 // Health check route
 app.get("/", (_, res) => {

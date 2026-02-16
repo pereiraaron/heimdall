@@ -4,3 +4,4 @@ export * from "./UserProjectMembership";
 export * from "./RefreshToken";
 export * from "./PasskeyCredential";
 export * from "./WebAuthnChallenge";
+export * from "./SocialAccount";

@@ -2,13 +2,14 @@ import { Response } from "express";
 import crypto from "crypto";
 import { Types } from "mongoose";
 import bcrypt from "bcrypt";
-import { User, UserProjectMembership } from "../models";
+import { User, UserProjectMembership } from "@models";
 import {
   AuthRequest,
   MembershipRole,
   MembershipStatus,
   canManageRole,
-} from "../types";
+} from "@types";
+import { cleanupOrphanedUser } from "@services/cleanupUserData";
 
 export const getProjectMembers = async (req: AuthRequest, res: Response) => {
   try {
@@ -196,6 +197,7 @@ export const removeMember = async (req: AuthRequest, res: Response) => {
     }
 
     await UserProjectMembership.deleteOne({ _id: membership._id });
+    await cleanupOrphanedUser(userId);
 
     res.status(200).json({ message: "Member removed" });
   } catch (error) {
@@ -225,6 +227,7 @@ export const leaveProject = async (req: AuthRequest, res: Response) => {
     }
 
     await UserProjectMembership.deleteOne({ _id: membership._id });
+    await cleanupOrphanedUser(userId!);
 
     res.status(200).json({ message: "Successfully left the project" });
   } catch (error) {

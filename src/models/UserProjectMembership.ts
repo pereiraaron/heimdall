@@ -3,7 +3,7 @@ import {
   IUserProjectMembership,
   MembershipRole,
   MembershipStatus,
-} from "../types";
+} from "@types";
 
 const userProjectMembershipSchema = new Schema<IUserProjectMembership>(
   {

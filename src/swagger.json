@@ -18,6 +18,8 @@
     { "name": "Auth", "description": "Password-based authentication" },
     { "name": "Passkey", "description": "WebAuthn/FIDO2 passkey authentication. RP ID and allowed origins are configured per-project (webauthnRpId, webauthnOrigins fields on Project), falling back to server-level env vars." },
     { "name": "Passkey Management", "description": "Manage registered passkeys" },
+    { "name": "Social Auth", "description": "OAuth social authentication (Google, GitHub, Apple). Each project configures its own OAuth client credentials via the socialProviders field." },
+    { "name": "Social Account Management", "description": "Link, unlink, and list social accounts" },
     { "name": "Users", "description": "User management (project-scoped)" },
     { "name": "Memberships", "description": "Project membership management" }
   ],
@@ -226,6 +228,24 @@
               "settings": { "type": "object" }
             }
           }
+        }
+      },
+      "SocialLoginRequest": {
+        "type": "object",
+        "required": ["provider", "code", "redirectUri"],
+        "properties": {
+          "provider": { "type": "string", "enum": ["google", "github", "apple"], "example": "google" },
+          "code": { "type": "string", "description": "Authorization code from OAuth provider" },
+          "redirectUri": { "type": "string", "description": "Redirect URI used in the OAuth flow", "example": "https://myapp.com/auth/callback" }
+        }
+      },
+      "SocialAccount": {
+        "type": "object",
+        "properties": {
+          "provider": { "type": "string", "enum": ["google", "github", "apple"] },
+          "email": { "type": "string", "format": "email" },
+          "displayName": { "type": "string" },
+          "createdAt": { "type": "string", "format": "date-time" }
         }
       }
     }
@@ -614,6 +634,143 @@
           "404": {
             "description": "Active membership not found",
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } }
+          },
+          "500": {
+            "description": "Server error",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } }
+          }
+        }
+      }
+    },
+    "/auth/social/login": {
+      "post": {
+        "tags": ["Social Auth"],
+        "summary": "Login or register via social provider",
+        "description": "Exchanges an OAuth authorization code for user profile info, then logs in or creates a new user. Returns the same JWT + refresh token pair as password login. If the email matches an existing user, the social account is auto-linked.",
+        "security": [{ "ApiKeyAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/SocialLoginRequest" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Login successful",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/LoginResponse" } } }
+          },
+          "400": {
+            "description": "Missing fields, unsupported provider, or provider not enabled for project",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } }
+          },
+          "401": {
+            "description": "Account is disabled",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } }
+          },
+          "403": {
+            "description": "No active membership for this project",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } }
+          },
+          "500": {
+            "description": "Server error",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } }
+          }
+        }
+      }
+    },
+    "/auth/social/link": {
+      "post": {
+        "tags": ["Social Account Management"],
+        "summary": "Link a social account",
+        "description": "Links an OAuth provider account to the authenticated user. The provider must be enabled on the project.",
+        "security": [{ "BearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/SocialLoginRequest" }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Social account linked",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } }
+          },
+          "400": {
+            "description": "Missing fields, unsupported provider, or provider not enabled",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } }
+          },
+          "409": {
+            "description": "Provider already linked to this user or to another user",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } }
+          },
+          "500": {
+            "description": "Server error",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } }
+          }
+        }
+      }
+    },
+    "/auth/social/unlink/{provider}": {
+      "delete": {
+        "tags": ["Social Account Management"],
+        "summary": "Unlink a social account",
+        "description": "Removes a linked social provider from the authenticated user. Cannot unlink if it's the user's only authentication method.",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          {
+            "name": "provider",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "enum": ["google", "github", "apple"] },
+            "description": "Social provider to unlink"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Social account unlinked",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } }
+          },
+          "400": {
+            "description": "Unsupported provider or cannot unlink last auth method",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } }
+          },
+          "404": {
+            "description": "No such provider linked",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } }
+          },
+          "500": {
+            "description": "Server error",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } }
+          }
+        }
+      }
+    },
+    "/auth/social/accounts": {
+      "get": {
+        "tags": ["Social Account Management"],
+        "summary": "List linked social accounts",
+        "description": "Returns all social accounts linked to the authenticated user.",
+        "security": [{ "BearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "Social accounts list",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "accounts": {
+                      "type": "array",
+                      "items": { "$ref": "#/components/schemas/SocialAccount" }
+                    }
+                  }
+                }
+              }
+            }
           },
           "500": {
             "description": "Server error",

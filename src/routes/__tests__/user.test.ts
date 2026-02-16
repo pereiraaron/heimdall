@@ -1,18 +1,17 @@
 import request from "supertest";
 import express, { Express, Request, Response, NextFunction } from "express";
 import userRoutes from "../user";
-import { authenticate, authoriseRole } from "../../middleware";
+import { authenticate, authoriseRole } from "@middleware";
 import {
   getAllUsers,
   getUserById,
   updateUserById,
   deleteUserById,
-} from "../../controllers";
-import { MembershipRole } from "../../types";
-import { AuthRequest } from "../../types/auth";
+} from "@controllers";
+import { MembershipRole, AuthRequest } from "@types";
 
 // Mock middleware
-jest.mock("../../middleware", () => ({
+jest.mock("@middleware", () => ({
   authenticate: jest.fn(
     (req: AuthRequest, res: Response, next: NextFunction) => {
       req.user = {
@@ -33,7 +32,7 @@ jest.mock("../../middleware", () => ({
 }));
 
 // Mock controllers
-jest.mock("../../controllers", () => ({
+jest.mock("@controllers", () => ({
   getAllUsers: jest.fn((req: Request, res: Response) => {
     res.status(200).json([{ id: "user1", email: "user1@example.com" }]);
   }),
