@@ -9,13 +9,11 @@ jest.mock("@controllers", () => ({
     if (!req.body.email || !req.body.password) {
       return res.status(400).json({ message: "Email and password are required" });
     }
-    return res
-      .status(200)
-      .json({
-        message: "Login successful",
-        accessToken: "test-token",
-        refreshToken: "test-refresh",
-      });
+    return res.status(200).json({
+      message: "Login successful",
+      accessToken: "test-token",
+      refreshToken: "test-refresh",
+    });
   }),
   register: jest.fn((req, res) => {
     if (!req.body.email || !req.body.password) {
