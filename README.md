@@ -8,6 +8,7 @@ Heimdall provides password-based and WebAuthn/passkey authentication, JWT access
 
 - **Password authentication** with bcrypt hashing
 - **Passkey/WebAuthn (FIDO2)** as an alternative login method
+- **Social OAuth** (Google, GitHub, Apple) login and account linking
 - **JWT access tokens** (15 min) + **refresh tokens** (7 days) with rotation
 - **Multi-tenant projects** with API key scoping
 - **Role hierarchy**: Owner > Admin > Manager > Member
@@ -110,6 +111,17 @@ All project-scoped endpoints require an `x-api-key` header. Authenticated endpoi
 | DELETE | `/credentials/:id` | Bearer | Delete a passkey |
 | POST | `/opt-out` | Bearer | Opt out of passkey enrollment nudge |
 
+### Social Auth (`/api/auth/social`)
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| POST | `/login` | API Key | Login or register via social provider |
+| POST | `/link` | Bearer | Link a social account to current user |
+| DELETE | `/unlink/:provider` | Bearer | Unlink a social account |
+| GET | `/accounts` | Bearer | List linked social accounts |
+
+Supported providers: **Google**, **GitHub**, **Apple**. Provider credentials (client ID, client secret) are configured per-project in the database.
+
 ### Users (`/api/users`)
 
 | Method | Path | Auth | Description |
@@ -157,6 +169,17 @@ POST /api/auth/passkey/login/verify      (x-api-key) -> returns accessToken + re
 
 Passkey login returns the same token structure as password login. Users can have both methods active and use either on any device.
 
+### Social Login
+
+```
+POST /api/auth/social/login  (x-api-key) -> exchanges OAuth code, returns accessToken + refreshToken
+POST /api/auth/social/link   (Bearer)    -> links a social account to current user
+DELETE /api/auth/social/unlink/:provider (Bearer) -> unlinks a social account
+GET /api/auth/social/accounts (Bearer)   -> lists linked social accounts
+```
+
+New users are automatically created on first social login. Existing users matched by email are linked automatically. Users must retain at least one auth method (password or social) before unlinking.
+
 ## Passkey Enrollment Policy
 
 Projects can set `passkeyPolicy` to nudge users toward passkey setup:
@@ -173,9 +196,11 @@ src/
   controllers/    # Request handlers
   db/             # Database connection
   middleware/     # authenticate, authoriseRole, validateApiKey, validateMembership
+  config/         # Feature flags
   models/         # Mongoose schemas (User, Project, UserProjectMembership,
-                  #   RefreshToken, PasskeyCredential, WebAuthnChallenge)
+                  #   RefreshToken, PasskeyCredential, WebAuthnChallenge, SocialAccount)
   routes/         # Express routers
+  services/       # Business logic (social providers, cleanup, access grants)
   types/          # TypeScript interfaces and enums
   index.ts        # App entry point
 ```
