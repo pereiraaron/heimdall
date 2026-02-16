@@ -133,13 +133,16 @@ export const verifyRegistration = async (req: AuthRequest, res: Response) => {
       return;
     }
 
-    const { credentialID, credentialPublicKey, counter, credentialDeviceType, credentialBackedUp } =
-      verification.registrationInfo;
+    const {
+      credential: regCredential,
+      credentialDeviceType,
+      credentialBackedUp,
+    } = verification.registrationInfo;
 
     const passkeyCredential = await PasskeyCredential.create({
-      credentialId: credentialID,
-      publicKey: Buffer.from(credentialPublicKey),
-      counter,
+      credentialId: regCredential.id,
+      publicKey: Buffer.from(regCredential.publicKey),
+      counter: regCredential.counter,
       deviceType: credentialDeviceType,
       backedUp: credentialBackedUp,
       transports: credential.response?.transports || [],
@@ -236,9 +239,9 @@ export const verifyAuthentication = async (req: ApiKeyRequest, res: Response) =>
       expectedChallenge: challenge.challenge,
       expectedOrigin: origins,
       expectedRPID: expectedRpIds,
-      authenticator: {
-        credentialID: storedCredential.credentialId,
-        credentialPublicKey: new Uint8Array(storedCredential.publicKey),
+      credential: {
+        id: storedCredential.credentialId,
+        publicKey: new Uint8Array(storedCredential.publicKey),
         counter: storedCredential.counter,
         transports: storedCredential.transports as AuthenticatorTransport[],
       },

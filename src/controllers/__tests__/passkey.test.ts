@@ -174,9 +174,11 @@ describe("Passkey Controller", () => {
       simpleWebAuthn.verifyRegistrationResponse.mockResolvedValueOnce({
         verified: true,
         registrationInfo: {
-          credentialID: "Y3JlZC1pZA",
-          credentialPublicKey: new Uint8Array([1, 2, 3]),
-          counter: 0,
+          credential: {
+            id: "Y3JlZC1pZA",
+            publicKey: new Uint8Array([1, 2, 3]),
+            counter: 0,
+          },
           credentialDeviceType: "multiDevice",
           credentialBackedUp: true,
         },
