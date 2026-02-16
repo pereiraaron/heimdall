@@ -1,6 +1,6 @@
 {
   "name": "heimdall",
-  "version": "1.0.0",
+  "version": "2026.2.1-6.0",
   "description": "Authentication and authorization service",
   "main": "src/index.ts",
   "author": "Aron Pereira",
