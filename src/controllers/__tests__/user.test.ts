@@ -1,12 +1,12 @@
 import { Response } from "express";
-import { MembershipRole, MembershipStatus, AuthRequest } from "../../types";
+import { MembershipRole, MembershipStatus, AuthRequest } from "@types";
 import {
   getAllUsers,
   getUserById,
   updateUserById,
   deleteUserById,
 } from "../user";
-import { User, UserProjectMembership } from "../../models";
+import { User, UserProjectMembership } from "@models";
 
 jest.mock("mongoose", () => {
   const originalModule = jest.requireActual("mongoose");
@@ -17,7 +17,11 @@ jest.mock("mongoose", () => {
   };
 });
 
-jest.mock("../../models", () => ({
+jest.mock("@services/cleanupUserData", () => ({
+  cleanupOrphanedUser: jest.fn().mockResolvedValue(undefined),
+}));
+
+jest.mock("@models", () => ({
   User: {
     findByIdAndUpdate: jest.fn(),
     findByIdAndDelete: jest.fn(),

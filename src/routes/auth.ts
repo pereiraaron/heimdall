@@ -1,7 +1,7 @@
 import { Router } from "express";
 import rateLimit from "express-rate-limit";
-import { login, register, refresh, logout } from "../controllers";
-import { validateApiKey, authenticate } from "../middleware";
+import { login, register, refresh, logout } from "@controllers";
+import { validateApiKey, authenticate } from "@middleware";
 
 const router = Router();
 

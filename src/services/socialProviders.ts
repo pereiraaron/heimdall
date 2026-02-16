@@ -4,7 +4,7 @@ import {
   SocialProfile,
   ISocialProviderConfig,
   IAppleProviderConfig,
-} from "../types";
+} from "@types";
 
 const GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token";
 const GITHUB_TOKEN_URL = "https://github.com/login/oauth/access_token";
@@ -12,11 +12,11 @@ const GITHUB_USER_URL = "https://api.github.com/user";
 const GITHUB_EMAILS_URL = "https://api.github.com/user/emails";
 const APPLE_TOKEN_URL = "https://appleid.apple.com/auth/token";
 
-async function googleExchange(
+const googleExchange = async (
   code: string,
   redirectUri: string,
   config: ISocialProviderConfig
-): Promise<SocialProfile> {
+): Promise<SocialProfile> => {
   const response = await fetch(GOOGLE_TOKEN_URL, {
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
@@ -56,13 +56,13 @@ async function googleExchange(
     email: decoded.email,
     displayName: decoded.name,
   };
-}
+};
 
-async function githubExchange(
+const githubExchange = async (
   code: string,
   _redirectUri: string,
   config: ISocialProviderConfig
-): Promise<SocialProfile> {
+): Promise<SocialProfile> => {
   const tokenResponse = await fetch(GITHUB_TOKEN_URL, {
     method: "POST",
     headers: {
@@ -132,9 +132,9 @@ async function githubExchange(
     email,
     displayName: userData.name || userData.login,
   };
-}
+};
 
-function generateAppleClientSecret(config: IAppleProviderConfig): string {
+const generateAppleClientSecret = (config: IAppleProviderConfig): string => {
   const now = Math.floor(Date.now() / 1000);
 
   return jwt.sign(
@@ -151,13 +151,13 @@ function generateAppleClientSecret(config: IAppleProviderConfig): string {
       keyid: config.keyId,
     }
   );
-}
+};
 
-async function appleExchange(
+const appleExchange = async (
   code: string,
   redirectUri: string,
   config: IAppleProviderConfig
-): Promise<SocialProfile> {
+): Promise<SocialProfile> => {
   const clientSecret = generateAppleClientSecret(config);
 
   const response = await fetch(APPLE_TOKEN_URL, {
@@ -197,14 +197,14 @@ async function appleExchange(
     email: decoded.email || "",
     displayName: undefined,
   };
-}
+};
 
-export async function exchangeCodeForProfile(
+export const exchangeCodeForProfile = async (
   provider: SocialProvider,
   code: string,
   redirectUri: string,
   config: ISocialProviderConfig
-): Promise<SocialProfile> {
+): Promise<SocialProfile> => {
   switch (provider) {
     case SocialProvider.Google:
       return googleExchange(code, redirectUri, config);
@@ -215,4 +215,4 @@ export async function exchangeCodeForProfile(
     default:
       throw new Error(`Unsupported provider: ${provider}`);
   }
-}
+};

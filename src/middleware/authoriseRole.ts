@@ -1,5 +1,5 @@
 import { Response, NextFunction } from "express";
-import { AuthRequest, MembershipRole, ROLE_HIERARCHY } from "../types";
+import { AuthRequest, MembershipRole, ROLE_HIERARCHY } from "@types";
 
 export const authoriseRole = (roles: MembershipRole[]) => {
   return (req: AuthRequest, res: Response, next: NextFunction) => {

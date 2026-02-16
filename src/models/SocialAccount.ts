@@ -1,5 +1,5 @@
 import { Schema, model } from "mongoose";
-import { ISocialAccount, SocialProvider } from "../types";
+import { ISocialAccount, SocialProvider } from "@types";
 
 const socialAccountSchema = new Schema<ISocialAccount>(
   {

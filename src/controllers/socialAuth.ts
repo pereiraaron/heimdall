@@ -4,7 +4,7 @@ import {
   UserProjectMembership,
   Project,
   SocialAccount,
-} from "../models";
+} from "@models";
 import {
   ApiKeyRequest,
   AuthRequest,
@@ -12,22 +12,24 @@ import {
   MembershipRole,
   MembershipStatus,
   ISocialProviderConfig,
-} from "../types";
+} from "@types";
 import { createTokenPair } from "./auth";
-import { exchangeCodeForProfile } from "../services/socialProviders";
+import { exchangeCodeForProfile } from "@services/socialProviders";
+import { GRANT_ACCESS_TO_ALL_PROJECTS } from "@config/flags";
+import { grantAllProjectsAccess } from "@services/grantAllProjectsAccess";
 
 const VALID_PROVIDERS = Object.values(SocialProvider) as string[];
 
-function getProviderConfig(
+const getProviderConfig = (
   project: InstanceType<typeof Project>,
   provider: SocialProvider
-): ISocialProviderConfig | null {
+): ISocialProviderConfig | null => {
   const config = project.socialProviders?.[provider];
   if (!config?.enabled || !config?.clientId || !config?.clientSecret) {
     return null;
   }
   return config;
-}
+};
 
 export const socialLogin = async (req: ApiKeyRequest, res: Response) => {
   const { provider, code, redirectUri } = req.body;
@@ -173,6 +175,10 @@ export const socialLogin = async (req: ApiKeyRequest, res: Response) => {
       email: profile.email,
       displayName: profile.displayName,
     });
+
+    if (GRANT_ACCESS_TO_ALL_PROJECTS) {
+      await grantAllProjectsAccess(user._id.toString());
+    }
 
     const { accessToken, refreshToken, expiresAt } = await createTokenPair(
       user._id.toString(),

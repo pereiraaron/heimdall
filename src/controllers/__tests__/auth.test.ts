@@ -1,11 +1,19 @@
 import { Response } from "express";
 import { login, register, refresh, logout } from "../auth";
-import { User, UserProjectMembership, RefreshToken, Project, PasskeyCredential } from "../../models";
+import { User, UserProjectMembership, RefreshToken, Project, PasskeyCredential } from "@models";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
-import { ApiKeyRequest, AuthRequest, MembershipRole, MembershipStatus } from "../../types";
+import { ApiKeyRequest, AuthRequest, MembershipRole, MembershipStatus } from "@types";
 
-jest.mock("../../models", () => ({
+jest.mock("@config/flags", () => ({
+  GRANT_ACCESS_TO_ALL_PROJECTS: false,
+}));
+
+jest.mock("@services/grantAllProjectsAccess", () => ({
+  grantAllProjectsAccess: jest.fn().mockResolvedValue(undefined),
+}));
+
+jest.mock("@models", () => ({
   User: {
     findOne: jest.fn().mockReturnValue({
       select: jest.fn(),

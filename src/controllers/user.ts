@@ -1,6 +1,7 @@
 import { Response } from "express";
-import { User, UserProjectMembership } from "../models";
-import { AuthRequest, MembershipStatus } from "../types";
+import { User, UserProjectMembership } from "@models";
+import { AuthRequest, MembershipStatus } from "@types";
+import { cleanupOrphanedUser } from "@services/cleanupUserData";
 
 export const getAllUsers = async (req: AuthRequest, res: Response) => {
   try {
@@ -113,6 +114,8 @@ export const deleteUserById = async (req: AuthRequest, res: Response) => {
       res.status(404).json({ message: "User not found in this project" });
       return;
     }
+
+    await cleanupOrphanedUser(userId);
 
     res.status(200).json({ message: "User removed from project successfully" });
   } catch (error) {

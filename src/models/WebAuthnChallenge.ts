@@ -1,5 +1,5 @@
 import { Schema, model } from "mongoose";
-import { IWebAuthnChallenge } from "../types";
+import { IWebAuthnChallenge } from "@types";
 
 const webAuthnChallengeSchema = new Schema<IWebAuthnChallenge>({
   challenge: {

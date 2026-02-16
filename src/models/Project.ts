@@ -1,6 +1,6 @@
 import { Schema, model } from "mongoose";
 import crypto from "crypto";
-import { IProject } from "../types";
+import { IProject } from "@types";
 
 const projectSchema = new Schema<IProject>(
   {
