@@ -5,9 +5,9 @@ import {
   RefreshToken,
   PasskeyCredential,
   SocialAccount,
-} from "@models";
+} from "../../models";
 
-jest.mock("@models", () => ({
+jest.mock("../../models", () => ({
   User: {
     findByIdAndDelete: jest.fn().mockResolvedValue(undefined),
   },

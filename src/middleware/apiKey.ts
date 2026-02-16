@@ -1,6 +1,6 @@
 import { Response, NextFunction } from "express";
-import { Project } from "@models";
-import { ApiKeyRequest } from "@types";
+import { Project } from "../models";
+import { ApiKeyRequest } from "../types";
 
 export const validateApiKey = async (req: ApiKeyRequest, res: Response, next: NextFunction) => {
   const apiKey = req.headers["x-api-key"] as string;

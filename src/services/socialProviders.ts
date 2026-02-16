@@ -1,5 +1,10 @@
 import jwt from "jsonwebtoken";
-import { SocialProvider, SocialProfile, ISocialProviderConfig, IAppleProviderConfig } from "@types";
+import {
+  SocialProvider,
+  SocialProfile,
+  ISocialProviderConfig,
+  IAppleProviderConfig,
+} from "../types";
 
 const GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token";
 const GITHUB_TOKEN_URL = "https://github.com/login/oauth/access_token";

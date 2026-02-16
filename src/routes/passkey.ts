@@ -9,8 +9,8 @@ import {
   updateCredential,
   deleteCredential,
   optOutPasskey,
-} from "@controllers";
-import { authenticate, validateApiKey } from "@middleware";
+} from "../controllers";
+import { authenticate, validateApiKey } from "../middleware";
 
 const router = Router();
 

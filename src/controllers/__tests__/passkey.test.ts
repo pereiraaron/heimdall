@@ -16,10 +16,10 @@ import {
   WebAuthnChallenge,
   RefreshToken,
   Project,
-} from "@models";
-import { AuthRequest, ApiKeyRequest, MembershipRole, MembershipStatus } from "@types";
+} from "../../models";
+import { AuthRequest, ApiKeyRequest, MembershipRole, MembershipStatus } from "../../types";
 
-jest.mock("@models", () => ({
+jest.mock("../../models", () => ({
   User: {
     findById: jest.fn(),
     findOne: jest.fn(),

@@ -1,6 +1,6 @@
 import jwt from "jsonwebtoken";
 import { exchangeCodeForProfile } from "../socialProviders";
-import { SocialProvider } from "@types";
+import { SocialProvider } from "../../types";
 
 // Mock global fetch
 const mockFetch = jest.fn();

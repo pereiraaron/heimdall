@@ -1,5 +1,5 @@
 import { Schema, model } from "mongoose";
-import { IPasskeyCredential } from "@types";
+import { IPasskeyCredential } from "../types";
 
 const passkeyCredentialSchema = new Schema<IPasskeyCredential>(
   {

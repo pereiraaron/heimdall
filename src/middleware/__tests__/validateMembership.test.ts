@@ -1,9 +1,9 @@
 import { Response, NextFunction } from "express";
 import { validateMembership } from "../validateMembership";
-import { UserProjectMembership } from "@models";
-import { AuthRequest, MembershipRole, MembershipStatus } from "@types";
+import { UserProjectMembership } from "../../models";
+import { AuthRequest, MembershipRole, MembershipStatus } from "../../types";
 
-jest.mock("@models", () => ({
+jest.mock("../../models", () => ({
   UserProjectMembership: {
     findOne: jest.fn(),
   },

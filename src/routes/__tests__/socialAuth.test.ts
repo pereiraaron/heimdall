@@ -1,15 +1,15 @@
 import request from "supertest";
 import express, { Express, Request, Response, NextFunction } from "express";
 import socialAuthRoutes from "../socialAuth";
-import { validateApiKey, authenticate } from "@middleware";
+import { validateApiKey, authenticate } from "../../middleware";
 import {
   socialLogin,
   linkSocialAccount,
   unlinkSocialAccount,
   listSocialAccounts,
-} from "@controllers";
+} from "../../controllers";
 
-jest.mock("@middleware", () => ({
+jest.mock("../../middleware", () => ({
   validateApiKey: jest.fn((req: Request, res: Response, next: NextFunction) => {
     const apiKey = req.headers["x-api-key"];
     if (!apiKey) {
@@ -34,7 +34,7 @@ jest.mock("@middleware", () => ({
   }),
 }));
 
-jest.mock("@controllers", () => ({
+jest.mock("../../controllers", () => ({
   socialLogin: jest.fn((req, res) =>
     res.status(200).json({ message: "Login successful", accessToken: "token" })
   ),

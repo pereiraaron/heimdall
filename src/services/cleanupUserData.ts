@@ -4,7 +4,7 @@ import {
   RefreshToken,
   PasskeyCredential,
   SocialAccount,
-} from "@models";
+} from "../models";
 
 /**
  * If the user has no remaining memberships, deletes the user

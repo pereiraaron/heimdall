@@ -1,8 +1,8 @@
 import { grantAllProjectsAccess } from "../grantAllProjectsAccess";
-import { Project, UserProjectMembership } from "@models";
-import { MembershipRole, MembershipStatus } from "@types";
+import { Project, UserProjectMembership } from "../../models";
+import { MembershipRole, MembershipStatus } from "../../types";
 
-jest.mock("@models", () => ({
+jest.mock("../../models", () => ({
   Project: {
     find: jest.fn(),
   },

@@ -9,10 +9,10 @@ import {
   acceptInvitation,
   updateMemberMetadata,
 } from "../membership";
-import { User, UserProjectMembership } from "@models";
-import { AuthRequest, MembershipRole, MembershipStatus } from "@types";
+import { User, UserProjectMembership } from "../../models";
+import { AuthRequest, MembershipRole, MembershipStatus } from "../../types";
 
-jest.mock("@services/cleanupUserData", () => ({
+jest.mock("../../services/cleanupUserData", () => ({
   cleanupOrphanedUser: jest.fn().mockResolvedValue(undefined),
 }));
 
@@ -31,7 +31,7 @@ jest.mock("mongoose", () => {
   };
 });
 
-jest.mock("@models", () => ({
+jest.mock("../../models", () => ({
   User: {
     findOne: jest.fn(),
     create: jest.fn(),

@@ -1,5 +1,5 @@
-import { Project, UserProjectMembership } from "@models";
-import { MembershipRole, MembershipStatus } from "@types";
+import { Project, UserProjectMembership } from "../models";
+import { MembershipRole, MembershipStatus } from "../types";
 
 /**
  * Creates an active membership for the given user in every project

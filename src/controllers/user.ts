@@ -1,7 +1,7 @@
 import { Response } from "express";
-import { User, UserProjectMembership } from "@models";
-import { AuthRequest, MembershipStatus } from "@types";
-import { cleanupOrphanedUser } from "@services/cleanupUserData";
+import { User, UserProjectMembership } from "../models";
+import { AuthRequest, MembershipStatus } from "../types";
+import { cleanupOrphanedUser } from "../services/cleanupUserData";
 
 export const getAllUsers = async (req: AuthRequest, res: Response) => {
   try {

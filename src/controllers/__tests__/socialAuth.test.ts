@@ -5,18 +5,18 @@ import {
   unlinkSocialAccount,
   listSocialAccounts,
 } from "../socialAuth";
-import { User, UserProjectMembership, Project, SocialAccount, RefreshToken } from "@models";
-import { ApiKeyRequest, AuthRequest, MembershipRole, MembershipStatus } from "@types";
+import { User, UserProjectMembership, Project, SocialAccount, RefreshToken } from "../../models";
+import { ApiKeyRequest, AuthRequest, MembershipRole, MembershipStatus } from "../../types";
 
-jest.mock("@config/flags", () => ({
+jest.mock("../../config/flags", () => ({
   GRANT_ACCESS_TO_ALL_PROJECTS: false,
 }));
 
-jest.mock("@services/grantAllProjectsAccess", () => ({
+jest.mock("../../services/grantAllProjectsAccess", () => ({
   grantAllProjectsAccess: jest.fn().mockResolvedValue(undefined),
 }));
 
-jest.mock("@services/socialProviders", () => ({
+jest.mock("../../services/socialProviders", () => ({
   exchangeCodeForProfile: jest.fn().mockResolvedValue({
     providerUserId: "provider-user-123",
     email: "social@example.com",
@@ -24,7 +24,7 @@ jest.mock("@services/socialProviders", () => ({
   }),
 }));
 
-jest.mock("@models", () => ({
+jest.mock("../../models", () => ({
   User: {
     findById: jest.fn().mockReturnThis(),
     findOne: jest.fn(),
