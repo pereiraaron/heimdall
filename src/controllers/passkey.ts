@@ -24,9 +24,7 @@ const getWebAuthnConfig = async (projectId: string, requestOrigin?: string) => {
   const project = await Project.findById(projectId);
   const rpName = project?.name || DEFAULT_RP_NAME;
 
-  const rpIds = project?.webauthnRpIds?.length
-    ? project.webauthnRpIds
-    : [DEFAULT_RP_ID];
+  const rpIds = project?.webauthnRpIds?.length ? project.webauthnRpIds : [DEFAULT_RP_ID];
 
   // Resolve a single RP ID from the request origin for options generation.
   // The RP ID must be a registrable domain suffix of the origin hostname.
@@ -34,9 +32,7 @@ const getWebAuthnConfig = async (projectId: string, requestOrigin?: string) => {
   if (requestOrigin && rpIds.length > 1) {
     try {
       const hostname = new URL(requestOrigin).hostname;
-      const match = rpIds.find(
-        (id) => hostname === id || hostname.endsWith(`.${id}`)
-      );
+      const match = rpIds.find((id) => hostname === id || hostname.endsWith(`.${id}`));
       if (match) rpId = match;
     } catch {
       // Invalid origin, use first RP ID
@@ -45,9 +41,8 @@ const getWebAuthnConfig = async (projectId: string, requestOrigin?: string) => {
 
   let origins: string | string[];
   if (project?.webauthnOrigins && project.webauthnOrigins.length > 0) {
-    origins = project.webauthnOrigins.length === 1
-      ? project.webauthnOrigins[0]
-      : project.webauthnOrigins;
+    origins =
+      project.webauthnOrigins.length === 1 ? project.webauthnOrigins[0] : project.webauthnOrigins;
   } else {
     const fallback = DEFAULT_ORIGIN.split(",").map((o) => o.trim());
     origins = fallback.length === 1 ? fallback[0] : fallback;
@@ -59,10 +54,7 @@ const getWebAuthnConfig = async (projectId: string, requestOrigin?: string) => {
   return { rpId, rpName, origins, expectedRpIds };
 };
 
-export const generateRegistrationOptions = async (
-  req: AuthRequest,
-  res: Response
-) => {
+export const generateRegistrationOptions = async (req: AuthRequest, res: Response) => {
   try {
     const userId = req.user!.id;
     const projectId = req.user!.projectId;
@@ -108,10 +100,7 @@ export const generateRegistrationOptions = async (
   }
 };
 
-export const verifyRegistration = async (
-  req: AuthRequest,
-  res: Response
-) => {
+export const verifyRegistration = async (req: AuthRequest, res: Response) => {
   const { challengeId, credential, name } = req.body;
 
   if (!challengeId || !credential) {
@@ -144,13 +133,8 @@ export const verifyRegistration = async (
       return;
     }
 
-    const {
-      credentialID,
-      credentialPublicKey,
-      counter,
-      credentialDeviceType,
-      credentialBackedUp,
-    } = verification.registrationInfo;
+    const { credentialID, credentialPublicKey, counter, credentialDeviceType, credentialBackedUp } =
+      verification.registrationInfo;
 
     const passkeyCredential = await PasskeyCredential.create({
       credentialId: credentialID,
@@ -177,10 +161,7 @@ export const verifyRegistration = async (
   }
 };
 
-export const generateAuthenticationOptions = async (
-  req: ApiKeyRequest,
-  res: Response
-) => {
+export const generateAuthenticationOptions = async (req: ApiKeyRequest, res: Response) => {
   try {
     const requestOrigin = req.get("origin");
     const { rpId } = await getWebAuthnConfig(req.projectId!, requestOrigin);
@@ -221,10 +202,7 @@ export const generateAuthenticationOptions = async (
   }
 };
 
-export const verifyAuthentication = async (
-  req: ApiKeyRequest,
-  res: Response
-) => {
+export const verifyAuthentication = async (req: ApiKeyRequest, res: Response) => {
   const { challengeId, credential } = req.body;
   const projectId = req.projectId!;
 
@@ -276,7 +254,7 @@ export const verifyAuthentication = async (
     if (newCounter <= storedCredential.counter && storedCredential.counter !== 0) {
       console.warn(
         `Passkey counter anomaly detected for credential ${storedCredential.credentialId}. ` +
-        `Expected > ${storedCredential.counter}, got ${newCounter}. Possible cloned authenticator.`
+          `Expected > ${storedCredential.counter}, got ${newCounter}. Possible cloned authenticator.`
       );
     }
 

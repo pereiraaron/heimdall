@@ -38,15 +38,9 @@ jest.mock("@controllers", () => ({
   socialLogin: jest.fn((req, res) =>
     res.status(200).json({ message: "Login successful", accessToken: "token" })
   ),
-  linkSocialAccount: jest.fn((req, res) =>
-    res.status(201).json({ message: "Account linked" })
-  ),
-  unlinkSocialAccount: jest.fn((req, res) =>
-    res.status(200).json({ message: "Account unlinked" })
-  ),
-  listSocialAccounts: jest.fn((req, res) =>
-    res.status(200).json({ accounts: [] })
-  ),
+  linkSocialAccount: jest.fn((req, res) => res.status(201).json({ message: "Account linked" })),
+  unlinkSocialAccount: jest.fn((req, res) => res.status(200).json({ message: "Account unlinked" })),
+  listSocialAccounts: jest.fn((req, res) => res.status(200).json({ accounts: [] })),
 }));
 
 describe("Social Auth Routes", () => {
@@ -105,8 +99,7 @@ describe("Social Auth Routes", () => {
 
   describe("DELETE /auth/social/unlink/:provider", () => {
     it("should return 401 without Bearer token", async () => {
-      const response = await request(app)
-        .delete("/auth/social/unlink/google");
+      const response = await request(app).delete("/auth/social/unlink/google");
 
       expect(response.status).toBe(401);
       expect(unlinkSocialAccount).not.toHaveBeenCalled();
@@ -125,8 +118,7 @@ describe("Social Auth Routes", () => {
 
   describe("GET /auth/social/accounts", () => {
     it("should return 401 without Bearer token", async () => {
-      const response = await request(app)
-        .get("/auth/social/accounts");
+      const response = await request(app).get("/auth/social/accounts");
 
       expect(response.status).toBe(401);
       expect(listSocialAccounts).not.toHaveBeenCalled();

@@ -34,9 +34,7 @@ describe("Database Connection", () => {
 
     await connectToDB();
 
-    expect(mongoose.connect).toHaveBeenCalledWith(
-      "mongodb://test-connection-string"
-    );
+    expect(mongoose.connect).toHaveBeenCalledWith("mongodb://test-connection-string");
     expect(console.log).toHaveBeenCalledWith("🟢 MongoDB connected");
     expect(process.exit).not.toHaveBeenCalled();
   });
@@ -47,13 +45,8 @@ describe("Database Connection", () => {
 
     await connectToDB();
 
-    expect(mongoose.connect).toHaveBeenCalledWith(
-      "mongodb://test-connection-string"
-    );
-    expect(console.error).toHaveBeenCalledWith(
-      "🔴 MongoDB connection error:",
-      testError
-    );
+    expect(mongoose.connect).toHaveBeenCalledWith("mongodb://test-connection-string");
+    expect(console.error).toHaveBeenCalledWith("🔴 MongoDB connection error:", testError);
     expect(process.exit).toHaveBeenCalledWith(1);
   });
 });

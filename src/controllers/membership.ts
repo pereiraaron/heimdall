@@ -3,12 +3,7 @@ import crypto from "crypto";
 import { Types } from "mongoose";
 import bcrypt from "bcrypt";
 import { User, UserProjectMembership } from "@models";
-import {
-  AuthRequest,
-  MembershipRole,
-  MembershipStatus,
-  canManageRole,
-} from "@types";
+import { AuthRequest, MembershipRole, MembershipStatus, canManageRole } from "@types";
 import { cleanupOrphanedUser } from "@services/cleanupUserData";
 
 export const getProjectMembers = async (req: AuthRequest, res: Response) => {

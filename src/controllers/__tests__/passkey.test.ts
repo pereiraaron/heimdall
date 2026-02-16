@@ -583,7 +583,9 @@ describe("Passkey Controller", () => {
         params: { id: "cred-id-123" },
       };
 
-      (PasskeyCredential.findOneAndDelete as jest.Mock).mockResolvedValueOnce({ _id: "cred-id-123" });
+      (PasskeyCredential.findOneAndDelete as jest.Mock).mockResolvedValueOnce({
+        _id: "cred-id-123",
+      });
 
       await deleteCredential(
         mockReq as unknown as AuthRequest,

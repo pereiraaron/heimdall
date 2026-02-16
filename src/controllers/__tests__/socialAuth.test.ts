@@ -5,19 +5,8 @@ import {
   unlinkSocialAccount,
   listSocialAccounts,
 } from "../socialAuth";
-import {
-  User,
-  UserProjectMembership,
-  Project,
-  SocialAccount,
-  RefreshToken,
-} from "@models";
-import {
-  ApiKeyRequest,
-  AuthRequest,
-  MembershipRole,
-  MembershipStatus,
-} from "@types";
+import { User, UserProjectMembership, Project, SocialAccount, RefreshToken } from "@models";
+import { ApiKeyRequest, AuthRequest, MembershipRole, MembershipStatus } from "@types";
 
 jest.mock("@config/flags", () => ({
   GRANT_ACCESS_TO_ALL_PROJECTS: false,
@@ -330,9 +319,7 @@ describe("Social Auth Controller", () => {
           github: { enabled: true, clientId: "id", clientSecret: "secret" },
         },
       });
-      (SocialAccount.findOne as jest.Mock)
-        .mockResolvedValueOnce(null)
-        .mockResolvedValueOnce(null);
+      (SocialAccount.findOne as jest.Mock).mockResolvedValueOnce(null).mockResolvedValueOnce(null);
       (SocialAccount.create as jest.Mock).mockResolvedValue({});
 
       await linkSocialAccount(mockRequest as AuthRequest, mockResponse as Response);
@@ -465,9 +452,7 @@ describe("Social Auth Controller", () => {
     });
 
     it("should return 200 with accounts list", async () => {
-      const mockAccounts = [
-        { provider: "google", email: "user@gmail.com" },
-      ];
+      const mockAccounts = [{ provider: "google", email: "user@gmail.com" }];
       (SocialAccount.find as jest.Mock).mockReturnValue({
         select: jest.fn().mockResolvedValue(mockAccounts),
       });

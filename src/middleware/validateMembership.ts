@@ -1,11 +1,6 @@
 import { Response, NextFunction } from "express";
 import { UserProjectMembership } from "@models";
-import {
-  AuthRequest,
-  MembershipRole,
-  MembershipStatus,
-  ROLE_HIERARCHY,
-} from "@types";
+import { AuthRequest, MembershipRole, MembershipStatus, ROLE_HIERARCHY } from "@types";
 
 export const validateMembership = (requiredRoles?: MembershipRole[]) => {
   return async (req: AuthRequest, res: Response, next: NextFunction) => {
@@ -31,9 +26,7 @@ export const validateMembership = (requiredRoles?: MembershipRole[]) => {
 
       if (requiredRoles && requiredRoles.length > 0) {
         const userRoleLevel = ROLE_HIERARCHY[membership.role as MembershipRole];
-        const minRequiredLevel = Math.min(
-          ...requiredRoles.map((r) => ROLE_HIERARCHY[r])
-        );
+        const minRequiredLevel = Math.min(...requiredRoles.map((r) => ROLE_HIERARCHY[r]));
 
         if (userRoleLevel < minRequiredLevel) {
           res.status(403).json({ message: "Insufficient permissions" });
@@ -49,4 +42,3 @@ export const validateMembership = (requiredRoles?: MembershipRole[]) => {
     }
   };
 };
-

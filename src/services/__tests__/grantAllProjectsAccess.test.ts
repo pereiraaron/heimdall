@@ -43,9 +43,7 @@ describe("grantAllProjectsAccess", () => {
   });
 
   it("should not call insertMany if user is already in all projects", async () => {
-    (Project.find as jest.Mock).mockResolvedValue([
-      { _id: { toString: () => "p1" } },
-    ]);
+    (Project.find as jest.Mock).mockResolvedValue([{ _id: { toString: () => "p1" } }]);
     (UserProjectMembership.find as jest.Mock).mockResolvedValue([
       { projectId: { toString: () => "p1" } },
     ]);

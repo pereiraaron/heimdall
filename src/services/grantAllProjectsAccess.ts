@@ -8,13 +8,8 @@ import { MembershipRole, MembershipStatus } from "@types";
 export const grantAllProjectsAccess = async (userId: string) => {
   const allProjects = await Project.find({}, "_id");
 
-  const existingMemberships = await UserProjectMembership.find(
-    { userId },
-    "projectId"
-  );
-  const existingProjectIds = new Set(
-    existingMemberships.map((m) => m.projectId.toString())
-  );
+  const existingMemberships = await UserProjectMembership.find({ userId }, "projectId");
+  const existingProjectIds = new Set(existingMemberships.map((m) => m.projectId.toString()));
 
   const newMemberships = allProjects
     .filter((p) => !existingProjectIds.has(p._id.toString()))

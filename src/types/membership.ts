@@ -37,9 +37,6 @@ export const ROLE_HIERARCHY: Record<MembershipRole, number> = {
   [MembershipRole.Member]: 1,
 };
 
-export const canManageRole = (
-  actorRole: MembershipRole,
-  targetRole: MembershipRole
-): boolean => {
+export const canManageRole = (actorRole: MembershipRole, targetRole: MembershipRole): boolean => {
   return ROLE_HIERARCHY[actorRole] > ROLE_HIERARCHY[targetRole];
 };

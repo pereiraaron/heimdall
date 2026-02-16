@@ -27,11 +27,7 @@ describe("Authorise Role Middleware", () => {
 
   it("should return 403 if user role is not provided", () => {
     const authorizeFn = authoriseRole([MembershipRole.Admin]);
-    authorizeFn(
-      mockRequest as AuthRequest,
-      mockResponse as Response,
-      nextFunction
-    );
+    authorizeFn(mockRequest as AuthRequest, mockResponse as Response, nextFunction);
 
     expect(responseStatus).toHaveBeenCalledWith(403);
     expect(responseJson).toHaveBeenCalledWith({
@@ -44,11 +40,7 @@ describe("Authorise Role Middleware", () => {
     mockRequest.user = { role: MembershipRole.Member } as any;
     const authorizeFn = authoriseRole([MembershipRole.Admin]);
 
-    authorizeFn(
-      mockRequest as AuthRequest,
-      mockResponse as Response,
-      nextFunction
-    );
+    authorizeFn(mockRequest as AuthRequest, mockResponse as Response, nextFunction);
 
     expect(responseStatus).toHaveBeenCalledWith(403);
     expect(responseJson).toHaveBeenCalledWith({
@@ -61,11 +53,7 @@ describe("Authorise Role Middleware", () => {
     mockRequest.user = { role: MembershipRole.Admin } as any;
     const authorizeFn = authoriseRole([MembershipRole.Admin, MembershipRole.Manager]);
 
-    authorizeFn(
-      mockRequest as AuthRequest,
-      mockResponse as Response,
-      nextFunction
-    );
+    authorizeFn(mockRequest as AuthRequest, mockResponse as Response, nextFunction);
 
     expect(nextFunction).toHaveBeenCalled();
     expect(responseStatus).not.toHaveBeenCalled();
@@ -75,11 +63,7 @@ describe("Authorise Role Middleware", () => {
     mockRequest.user = { role: MembershipRole.Manager } as any;
     const authorizeFn = authoriseRole([MembershipRole.Admin, MembershipRole.Manager]);
 
-    authorizeFn(
-      mockRequest as AuthRequest,
-      mockResponse as Response,
-      nextFunction
-    );
+    authorizeFn(mockRequest as AuthRequest, mockResponse as Response, nextFunction);
 
     expect(nextFunction).toHaveBeenCalled();
     expect(responseStatus).not.toHaveBeenCalled();
@@ -89,11 +73,7 @@ describe("Authorise Role Middleware", () => {
     mockRequest.user = { role: MembershipRole.Owner } as any;
     const authorizeFn = authoriseRole([MembershipRole.Admin]);
 
-    authorizeFn(
-      mockRequest as AuthRequest,
-      mockResponse as Response,
-      nextFunction
-    );
+    authorizeFn(mockRequest as AuthRequest, mockResponse as Response, nextFunction);
 
     expect(nextFunction).toHaveBeenCalled();
     expect(responseStatus).not.toHaveBeenCalled();

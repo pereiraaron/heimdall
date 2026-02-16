@@ -277,7 +277,13 @@ describe("Auth Controller", () => {
     it("should return 400 if refresh token is missing", async () => {
       const authRequest: Partial<AuthRequest> = {
         body: {},
-        user: { id: "user123", email: "test@example.com", role: MembershipRole.Member, projectId: "project-123", membershipId: "membership123" },
+        user: {
+          id: "user123",
+          email: "test@example.com",
+          role: MembershipRole.Member,
+          projectId: "project-123",
+          membershipId: "membership123",
+        },
       };
 
       await logout(authRequest as AuthRequest, mockResponse as Response);
@@ -291,7 +297,13 @@ describe("Auth Controller", () => {
     it("should return 200 on successful logout", async () => {
       const authRequest: Partial<AuthRequest> = {
         body: { refreshToken: "some-token" },
-        user: { id: "user123", email: "test@example.com", role: MembershipRole.Member, projectId: "project-123", membershipId: "membership123" },
+        user: {
+          id: "user123",
+          email: "test@example.com",
+          role: MembershipRole.Member,
+          projectId: "project-123",
+          membershipId: "membership123",
+        },
       };
 
       (RefreshToken.findOneAndUpdate as jest.Mock).mockResolvedValueOnce({ isRevoked: true });

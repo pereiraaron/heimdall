@@ -172,7 +172,11 @@ export const refresh = async (req: ApiKeyRequest, res: Response) => {
     }
 
     // Issue new token pair
-    const { accessToken, refreshToken: newRefreshToken, expiresAt } = await createTokenPair(
+    const {
+      accessToken,
+      refreshToken: newRefreshToken,
+      expiresAt,
+    } = await createTokenPair(
       user._id.toString(),
       user.email,
       membership.role,

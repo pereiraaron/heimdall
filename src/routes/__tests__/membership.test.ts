@@ -28,27 +28,15 @@ jest.mock("@middleware", () => ({
 }));
 
 jest.mock("@controllers", () => ({
-  getProjectMembers: jest.fn((req, res) =>
-    res.status(200).json([])
-  ),
-  getMemberById: jest.fn((req, res) =>
-    res.status(200).json({ userId: req.params.userId })
-  ),
-  inviteMember: jest.fn((req, res) =>
-    res.status(201).json({ message: "Invitation sent" })
-  ),
-  updateMemberRole: jest.fn((req, res) =>
-    res.status(200).json({ message: "Role updated" })
-  ),
-  removeMember: jest.fn((req, res) =>
-    res.status(200).json({ message: "Member removed" })
-  ),
+  getProjectMembers: jest.fn((req, res) => res.status(200).json([])),
+  getMemberById: jest.fn((req, res) => res.status(200).json({ userId: req.params.userId })),
+  inviteMember: jest.fn((req, res) => res.status(201).json({ message: "Invitation sent" })),
+  updateMemberRole: jest.fn((req, res) => res.status(200).json({ message: "Role updated" })),
+  removeMember: jest.fn((req, res) => res.status(200).json({ message: "Member removed" })),
   leaveProject: jest.fn((req, res) =>
     res.status(200).json({ message: "Successfully left the project" })
   ),
-  acceptInvitation: jest.fn((req, res) =>
-    res.status(200).json({ message: "Invitation accepted" })
-  ),
+  acceptInvitation: jest.fn((req, res) => res.status(200).json({ message: "Invitation accepted" })),
   updateMemberMetadata: jest.fn((req, res) =>
     res.status(200).json({ message: "Metadata updated" })
   ),
@@ -98,9 +86,7 @@ describe("Membership Routes", () => {
 
   describe("PUT /members/:userId/role", () => {
     it("should call authenticate, authoriseRole, and updateMemberRole", async () => {
-      const response = await request(app)
-        .put("/members/user-456/role")
-        .send({ role: "manager" });
+      const response = await request(app).put("/members/user-456/role").send({ role: "manager" });
 
       expect(response.status).toBe(200);
       expect(updateMemberRole).toHaveBeenCalled();

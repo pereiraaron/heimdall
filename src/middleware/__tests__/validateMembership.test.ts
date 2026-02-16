@@ -40,7 +40,13 @@ describe("validateMembership Middleware", () => {
   });
 
   it("should return 401 if userId is missing", async () => {
-    mockRequest.user = { id: "", email: "", role: MembershipRole.Member, projectId: "project-123", membershipId: "" };
+    mockRequest.user = {
+      id: "",
+      email: "",
+      role: MembershipRole.Member,
+      projectId: "project-123",
+      membershipId: "",
+    };
 
     const middleware = validateMembership();
     await middleware(mockRequest as AuthRequest, mockResponse as Response, nextFunction);
@@ -51,7 +57,13 @@ describe("validateMembership Middleware", () => {
   });
 
   it("should return 401 if projectId is missing", async () => {
-    mockRequest.user = { id: "user-123", email: "", role: MembershipRole.Member, projectId: "", membershipId: "" };
+    mockRequest.user = {
+      id: "user-123",
+      email: "",
+      role: MembershipRole.Member,
+      projectId: "",
+      membershipId: "",
+    };
 
     const middleware = validateMembership();
     await middleware(mockRequest as AuthRequest, mockResponse as Response, nextFunction);
