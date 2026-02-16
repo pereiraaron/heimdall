@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { authenticate, authoriseRole } from "@middleware";
+import { authenticate, authoriseRole } from "../middleware";
 import {
   getProjectMembers,
   getMemberById,
@@ -9,8 +9,8 @@ import {
   leaveProject,
   acceptInvitation,
   updateMemberMetadata,
-} from "@controllers";
-import { MembershipRole } from "@types";
+} from "../controllers";
+import { MembershipRole } from "../types";
 
 const router = Router();
 

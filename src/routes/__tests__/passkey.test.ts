@@ -10,10 +10,10 @@ import {
   updateCredential,
   deleteCredential,
   optOutPasskey,
-} from "@controllers";
-import { authenticate, validateApiKey } from "@middleware";
+} from "../../controllers";
+import { authenticate, validateApiKey } from "../../middleware";
 
-jest.mock("@controllers", () => ({
+jest.mock("../../controllers", () => ({
   generateRegistrationOptions: jest.fn((req, res) =>
     res.status(200).json({ options: {}, challengeId: "ch-123" })
   ),
@@ -52,7 +52,7 @@ jest.mock("@controllers", () => ({
   updateMemberMetadata: jest.fn(),
 }));
 
-jest.mock("@middleware", () => ({
+jest.mock("../../middleware", () => ({
   validateApiKey: jest.fn((req, res, next) => {
     const apiKey = req.headers["x-api-key"];
     if (!apiKey) {

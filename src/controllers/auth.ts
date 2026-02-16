@@ -1,11 +1,11 @@
 import { Response } from "express";
 import crypto from "crypto";
-import { User, UserProjectMembership, RefreshToken, PasskeyCredential, Project } from "@models";
+import { User, UserProjectMembership, RefreshToken, PasskeyCredential, Project } from "../models";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
-import { ApiKeyRequest, AuthRequest, MembershipRole, MembershipStatus } from "@types";
-import { GRANT_ACCESS_TO_ALL_PROJECTS } from "@config/flags";
-import { grantAllProjectsAccess } from "@services/grantAllProjectsAccess";
+import { ApiKeyRequest, AuthRequest, MembershipRole, MembershipStatus } from "../types";
+import { GRANT_ACCESS_TO_ALL_PROJECTS } from "../config/flags";
+import { grantAllProjectsAccess } from "../services/grantAllProjectsAccess";
 
 const ACCESS_TOKEN_EXPIRY = "15m";
 const REFRESH_TOKEN_EXPIRY_DAYS = 7;

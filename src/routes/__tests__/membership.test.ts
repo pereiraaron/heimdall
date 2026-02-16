@@ -1,7 +1,7 @@
 import request from "supertest";
 import express, { Express, Request, Response, NextFunction } from "express";
 import membershipRoutes from "../membership";
-import { authenticate } from "@middleware";
+import { authenticate } from "../../middleware";
 import {
   getProjectMembers,
   getMemberById,
@@ -11,9 +11,9 @@ import {
   leaveProject,
   acceptInvitation,
   updateMemberMetadata,
-} from "@controllers";
+} from "../../controllers";
 
-jest.mock("@middleware", () => ({
+jest.mock("../../middleware", () => ({
   authenticate: jest.fn((req: Request, res: Response, next: NextFunction) => {
     (req as any).user = {
       id: "user-123",
@@ -27,7 +27,7 @@ jest.mock("@middleware", () => ({
   authoriseRole: jest.fn(() => (req: Request, res: Response, next: NextFunction) => next()),
 }));
 
-jest.mock("@controllers", () => ({
+jest.mock("../../controllers", () => ({
   getProjectMembers: jest.fn((req, res) => res.status(200).json([])),
   getMemberById: jest.fn((req, res) => res.status(200).json({ userId: req.params.userId })),
   inviteMember: jest.fn((req, res) => res.status(201).json({ message: "Invitation sent" })),

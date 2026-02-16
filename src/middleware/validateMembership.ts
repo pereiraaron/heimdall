@@ -1,6 +1,6 @@
 import { Response, NextFunction } from "express";
-import { UserProjectMembership } from "@models";
-import { AuthRequest, MembershipRole, MembershipStatus, ROLE_HIERARCHY } from "@types";
+import { UserProjectMembership } from "../models";
+import { AuthRequest, MembershipRole, MembershipStatus, ROLE_HIERARCHY } from "../types";
 
 export const validateMembership = (requiredRoles?: MembershipRole[]) => {
   return async (req: AuthRequest, res: Response, next: NextFunction) => {

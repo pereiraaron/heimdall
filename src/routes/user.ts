@@ -1,7 +1,7 @@
 import { Router } from "express";
-import { authenticate, authoriseRole } from "@middleware";
-import { deleteUserById, getAllUsers, getUserById, updateUserById } from "@controllers";
-import { MembershipRole } from "@types";
+import { authenticate, authoriseRole } from "../middleware";
+import { deleteUserById, getAllUsers, getUserById, updateUserById } from "../controllers";
+import { MembershipRole } from "../types";
 
 const router = Router();
 

@@ -1,5 +1,5 @@
 import { Schema, model } from "mongoose";
-import { IUserProjectMembership, MembershipRole, MembershipStatus } from "@types";
+import { IUserProjectMembership, MembershipRole, MembershipStatus } from "../types";
 
 const userProjectMembershipSchema = new Schema<IUserProjectMembership>(
   {

@@ -1,9 +1,9 @@
 import { Response, NextFunction } from "express";
 import { validateApiKey } from "../apiKey";
-import { Project } from "@models";
-import { ApiKeyRequest } from "@types";
+import { Project } from "../../models";
+import { ApiKeyRequest } from "../../types";
 
-jest.mock("@models", () => ({
+jest.mock("../../models", () => ({
   Project: {
     findOne: jest.fn(),
   },

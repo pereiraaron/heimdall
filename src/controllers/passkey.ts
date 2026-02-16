@@ -11,9 +11,9 @@ import {
   PasskeyCredential,
   WebAuthnChallenge,
   Project,
-} from "@models";
+} from "../models";
 import { createTokenPair } from "./auth";
-import { AuthRequest, ApiKeyRequest, MembershipStatus } from "@types";
+import { AuthRequest, ApiKeyRequest, MembershipStatus } from "../types";
 
 const DEFAULT_RP_ID = process.env.WEBAUTHN_RP_ID || "localhost";
 const DEFAULT_RP_NAME = process.env.WEBAUTHN_RP_NAME || "Heimdall";

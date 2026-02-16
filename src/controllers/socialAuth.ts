@@ -1,5 +1,5 @@
 import { Response } from "express";
-import { User, UserProjectMembership, Project, SocialAccount } from "@models";
+import { User, UserProjectMembership, Project, SocialAccount } from "../models";
 import {
   ApiKeyRequest,
   AuthRequest,
@@ -7,11 +7,11 @@ import {
   MembershipRole,
   MembershipStatus,
   ISocialProviderConfig,
-} from "@types";
+} from "../types";
 import { createTokenPair } from "./auth";
-import { exchangeCodeForProfile } from "@services/socialProviders";
-import { GRANT_ACCESS_TO_ALL_PROJECTS } from "@config/flags";
-import { grantAllProjectsAccess } from "@services/grantAllProjectsAccess";
+import { exchangeCodeForProfile } from "../services/socialProviders";
+import { GRANT_ACCESS_TO_ALL_PROJECTS } from "../config/flags";
+import { grantAllProjectsAccess } from "../services/grantAllProjectsAccess";
 
 const VALID_PROVIDERS = Object.values(SocialProvider) as string[];
 

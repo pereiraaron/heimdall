@@ -1,10 +1,10 @@
 import request from "supertest";
 import express, { Express } from "express";
 import authRoutes from "../auth";
-import { login, register, refresh, logout } from "@controllers";
-import { validateApiKey, authenticate } from "@middleware";
+import { login, register, refresh, logout } from "../../controllers";
+import { validateApiKey, authenticate } from "../../middleware";
 
-jest.mock("@controllers", () => ({
+jest.mock("../../controllers", () => ({
   login: jest.fn((req, res) => {
     if (!req.body.email || !req.body.password) {
       return res.status(400).json({ message: "Email and password are required" });
@@ -32,7 +32,7 @@ jest.mock("@controllers", () => ({
   }),
 }));
 
-jest.mock("@middleware", () => ({
+jest.mock("../../middleware", () => ({
   validateApiKey: jest.fn((req, res, next) => {
     const apiKey = req.headers["x-api-key"];
     if (!apiKey) {

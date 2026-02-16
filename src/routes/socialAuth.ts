@@ -5,8 +5,8 @@ import {
   linkSocialAccount,
   unlinkSocialAccount,
   listSocialAccounts,
-} from "@controllers";
-import { validateApiKey, authenticate } from "@middleware";
+} from "../controllers";
+import { validateApiKey, authenticate } from "../middleware";
 
 const router = Router();
 

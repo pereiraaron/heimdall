@@ -1,6 +1,6 @@
 import { Response, NextFunction } from "express";
 import { authoriseRole } from "../authoriseRole";
-import { AuthRequest, MembershipRole } from "@types";
+import { AuthRequest, MembershipRole } from "../../types";
 
 describe("Authorise Role Middleware", () => {
   let mockRequest: Partial<AuthRequest>;
