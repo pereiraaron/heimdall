@@ -26,6 +26,26 @@ const projectSchema = new Schema<IProject>(
     webauthnOrigins: {
       type: [String],
     },
+    socialProviders: {
+      google: {
+        clientId: { type: String },
+        clientSecret: { type: String },
+        enabled: { type: Boolean, default: false },
+      },
+      github: {
+        clientId: { type: String },
+        clientSecret: { type: String },
+        enabled: { type: Boolean, default: false },
+      },
+      apple: {
+        clientId: { type: String },
+        clientSecret: { type: String },
+        enabled: { type: Boolean, default: false },
+        teamId: { type: String },
+        keyId: { type: String },
+        privateKey: { type: String },
+      },
+    },
   },
   {
     timestamps: true,

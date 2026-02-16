@@ -61,6 +61,11 @@ export const login = async (req: ApiKeyRequest, res: Response) => {
       return;
     }
 
+    if (!user.password) {
+      res.status(401).json({ message: "Invalid credentials" });
+      return;
+    }
+
     const isPasswordValid = await bcrypt.compare(password, user.password);
     if (!isPasswordValid) {
       res.status(401).json({ message: "Invalid credentials" });
@@ -236,6 +241,10 @@ export const register = async (req: ApiKeyRequest, res: Response) => {
           return;
         }
         // Reactivate suspended/pending membership
+        if (!user.password) {
+          res.status(401).json({ message: "Invalid credentials" });
+          return;
+        }
         const isPasswordValid = await bcrypt.compare(password, user.password);
         if (!isPasswordValid) {
           res.status(401).json({ message: "Invalid credentials" });
@@ -249,6 +258,10 @@ export const register = async (req: ApiKeyRequest, res: Response) => {
       }
 
       // Validate password for existing user joining new project
+      if (!user.password) {
+        res.status(401).json({ message: "Invalid credentials" });
+        return;
+      }
       const isPasswordValid = await bcrypt.compare(password, user.password);
       if (!isPasswordValid) {
         res.status(401).json({ message: "Invalid credentials" });
