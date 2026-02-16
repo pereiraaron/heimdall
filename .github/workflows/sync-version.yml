@@ -14,6 +14,7 @@ jobs:
       - uses: actions/checkout@v6
         with:
           ref: ${{ github.head_ref }}
+          token: ${{ secrets.PAT }}
 
       - name: Calculate and sync version
         run: |
@@ -21,7 +22,7 @@ jobs:
 
           # Count existing releases for today to determine the next number
           EXISTING=$(gh release list --limit 100 | grep -c "v${TODAY}\." || true)
-          RN=$(printf "%02d" $EXISTING)
+          RN=$(printf "%02d" "$EXISTING")
           VERSION="${TODAY}.${RN}"
 
           PR_VERSION=$(node -p "require('./package.json').version")
@@ -34,7 +35,15 @@ jobs:
             exit 0
           fi
 
-          npm version "$VERSION" --no-git-tag-version --allow-same-version
+          # Write version directly to preserve exact format (npm version would mangle it)
+          node -e "
+            const fs = require('fs');
+            for (const f of ['package.json', 'package-lock.json']) {
+              const pkg = JSON.parse(fs.readFileSync(f, 'utf8'));
+              pkg.version = '${VERSION}';
+              fs.writeFileSync(f, JSON.stringify(pkg, null, 2) + '\n');
+            }
+          "
 
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
@@ -42,4 +51,4 @@ jobs:
           git commit -m "chore: bump version to ${VERSION}"
           git push
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.PAT }}
