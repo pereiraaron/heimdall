@@ -2,33 +2,24 @@ import request from "supertest";
 import express, { Express, Request, Response, NextFunction } from "express";
 import userRoutes from "../user";
 import { authenticate, authoriseRole } from "@middleware";
-import {
-  getAllUsers,
-  getUserById,
-  updateUserById,
-  deleteUserById,
-} from "@controllers";
+import { getAllUsers, getUserById, updateUserById, deleteUserById } from "@controllers";
 import { MembershipRole, AuthRequest } from "@types";
 
 // Mock middleware
 jest.mock("@middleware", () => ({
-  authenticate: jest.fn(
-    (req: AuthRequest, res: Response, next: NextFunction) => {
-      req.user = {
-        id: "user123",
-        email: "test@example.com",
-        role: MembershipRole.Admin,
-        projectId: "project-123",
-        membershipId: "membership-123",
-      };
-      next();
-    }
-  ),
+  authenticate: jest.fn((req: AuthRequest, res: Response, next: NextFunction) => {
+    req.user = {
+      id: "user123",
+      email: "test@example.com",
+      role: MembershipRole.Admin,
+      projectId: "project-123",
+      membershipId: "membership-123",
+    };
+    next();
+  }),
   authoriseRole: jest
     .fn()
-    .mockImplementation(
-      (roles) => (req: AuthRequest, res: Response, next: NextFunction) => next()
-    ),
+    .mockImplementation((roles) => (req: AuthRequest, res: Response, next: NextFunction) => next()),
 }));
 
 // Mock controllers
@@ -72,9 +63,7 @@ describe("User Routes", () => {
       expect(authenticate).toHaveBeenCalled();
       expect(getAllUsers).toHaveBeenCalled();
       expect(response.status).toBe(200);
-      expect(response.body).toEqual([
-        { id: "user1", email: "user1@example.com" },
-      ]);
+      expect(response.body).toEqual([{ id: "user1", email: "user1@example.com" }]);
     });
   });
 
@@ -90,9 +79,7 @@ describe("User Routes", () => {
 
   describe("PUT /:id", () => {
     it("should call authenticate and authoriseRole middleware and update user", async () => {
-      const response = await request(app)
-        .put("/user123")
-        .send({ email: "updated@example.com" });
+      const response = await request(app).put("/user123").send({ email: "updated@example.com" });
 
       expect(authenticate).toHaveBeenCalled();
       expect(updateUserById).toHaveBeenCalled();

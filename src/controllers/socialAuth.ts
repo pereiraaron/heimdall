@@ -1,10 +1,5 @@
 import { Response } from "express";
-import {
-  User,
-  UserProjectMembership,
-  Project,
-  SocialAccount,
-} from "@models";
+import { User, UserProjectMembership, Project, SocialAccount } from "@models";
 import {
   ApiKeyRequest,
   AuthRequest,
@@ -36,9 +31,7 @@ export const socialLogin = async (req: ApiKeyRequest, res: Response) => {
   const projectId = req.projectId!;
 
   if (!provider || !code || !redirectUri) {
-    res
-      .status(400)
-      .json({ message: "Provider, code, and redirectUri are required" });
+    res.status(400).json({ message: "Provider, code, and redirectUri are required" });
     return;
   }
 
@@ -56,9 +49,7 @@ export const socialLogin = async (req: ApiKeyRequest, res: Response) => {
 
     const config = getProviderConfig(project, provider as SocialProvider);
     if (!config) {
-      res
-        .status(400)
-        .json({ message: `${provider} is not enabled for this project` });
+      res.status(400).json({ message: `${provider} is not enabled for this project` });
       return;
     }
 
@@ -210,9 +201,7 @@ export const linkSocialAccount = async (req: AuthRequest, res: Response) => {
   const projectId = req.user!.projectId;
 
   if (!provider || !code || !redirectUri) {
-    res
-      .status(400)
-      .json({ message: "Provider, code, and redirectUri are required" });
+    res.status(400).json({ message: "Provider, code, and redirectUri are required" });
     return;
   }
 
@@ -230,18 +219,14 @@ export const linkSocialAccount = async (req: AuthRequest, res: Response) => {
 
     const config = getProviderConfig(project, provider as SocialProvider);
     if (!config) {
-      res
-        .status(400)
-        .json({ message: `${provider} is not enabled for this project` });
+      res.status(400).json({ message: `${provider} is not enabled for this project` });
       return;
     }
 
     // Check if this provider is already linked to this user
     const existingLink = await SocialAccount.findOne({ provider, userId });
     if (existingLink) {
-      res
-        .status(409)
-        .json({ message: `${provider} account is already linked` });
+      res.status(409).json({ message: `${provider} account is already linked` });
       return;
     }
 
@@ -293,9 +278,7 @@ export const unlinkSocialAccount = async (req: AuthRequest, res: Response) => {
     const user = await User.findById(userId).select("+password");
     const socialAccounts = await SocialAccount.find({ userId });
     const hasPassword = !!user?.password;
-    const otherSocialAccounts = socialAccounts.filter(
-      (a) => a.provider !== provider
-    );
+    const otherSocialAccounts = socialAccounts.filter((a) => a.provider !== provider);
 
     if (!hasPassword && otherSocialAccounts.length === 0) {
       res.status(400).json({
@@ -311,9 +294,7 @@ export const unlinkSocialAccount = async (req: AuthRequest, res: Response) => {
     });
 
     if (!deleted) {
-      res
-        .status(404)
-        .json({ message: `No ${provider} account linked` });
+      res.status(404).json({ message: `No ${provider} account linked` });
       return;
     }
 

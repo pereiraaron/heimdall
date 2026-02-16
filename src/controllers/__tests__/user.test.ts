@@ -1,11 +1,6 @@
 import { Response } from "express";
 import { MembershipRole, MembershipStatus, AuthRequest } from "@types";
-import {
-  getAllUsers,
-  getUserById,
-  updateUserById,
-  deleteUserById,
-} from "../user";
+import { getAllUsers, getUserById, updateUserById, deleteUserById } from "../user";
 import { User, UserProjectMembership } from "@models";
 
 jest.mock("mongoose", () => {
@@ -75,13 +70,23 @@ describe("User Controller", () => {
       const mockMemberships = [
         {
           _id: "membership-1",
-          userId: { _id: "1", email: "user1@example.com", username: "user1", toObject: () => ({ _id: "1", email: "user1@example.com", username: "user1" }) },
+          userId: {
+            _id: "1",
+            email: "user1@example.com",
+            username: "user1",
+            toObject: () => ({ _id: "1", email: "user1@example.com", username: "user1" }),
+          },
           role: MembershipRole.Member,
           joinedAt: new Date(),
         },
         {
           _id: "membership-2",
-          userId: { _id: "2", email: "user2@example.com", username: "user2", toObject: () => ({ _id: "2", email: "user2@example.com", username: "user2" }) },
+          userId: {
+            _id: "2",
+            email: "user2@example.com",
+            username: "user2",
+            toObject: () => ({ _id: "2", email: "user2@example.com", username: "user2" }),
+          },
           role: MembershipRole.Admin,
           joinedAt: new Date(),
         },
@@ -119,7 +124,16 @@ describe("User Controller", () => {
     it("should return a user with status 200 when user exists in project", async () => {
       const mockMembership = {
         _id: "membership-id",
-        userId: { _id: "mock-user-id", email: "user@example.com", username: "testuser", toObject: () => ({ _id: "mock-user-id", email: "user@example.com", username: "testuser" }) },
+        userId: {
+          _id: "mock-user-id",
+          email: "user@example.com",
+          username: "testuser",
+          toObject: () => ({
+            _id: "mock-user-id",
+            email: "user@example.com",
+            username: "testuser",
+          }),
+        },
         role: MembershipRole.Member,
         joinedAt: new Date(),
         metadata: {},

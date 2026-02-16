@@ -42,11 +42,7 @@ describe("Authentication Middleware", () => {
   });
 
   it("should return 401 if authorization header is missing", () => {
-    authenticate(
-      mockRequest as AuthRequest,
-      mockResponse as Response,
-      nextFunction
-    );
+    authenticate(mockRequest as AuthRequest, mockResponse as Response, nextFunction);
 
     expect(responseStatus).toHaveBeenCalledWith(401);
     expect(responseJson).toHaveBeenCalledWith({
@@ -58,11 +54,7 @@ describe("Authentication Middleware", () => {
   it("should return 401 if authorization header does not start with 'Bearer '", () => {
     mockRequest.headers = { authorization: "InvalidToken" };
 
-    authenticate(
-      mockRequest as AuthRequest,
-      mockResponse as Response,
-      nextFunction
-    );
+    authenticate(mockRequest as AuthRequest, mockResponse as Response, nextFunction);
 
     expect(responseStatus).toHaveBeenCalledWith(401);
     expect(responseJson).toHaveBeenCalledWith({
@@ -77,11 +69,7 @@ describe("Authentication Middleware", () => {
       throw new Error("Invalid token");
     });
 
-    authenticate(
-      mockRequest as AuthRequest,
-      mockResponse as Response,
-      nextFunction
-    );
+    authenticate(mockRequest as AuthRequest, mockResponse as Response, nextFunction);
 
     expect(responseStatus).toHaveBeenCalledWith(401);
     expect(responseJson).toHaveBeenCalledWith({
@@ -99,16 +87,11 @@ describe("Authentication Middleware", () => {
     };
     (jwt.verify as jest.Mock).mockReturnValueOnce(decodedUser);
 
-    authenticate(
-      mockRequest as AuthRequest,
-      mockResponse as Response,
-      nextFunction
-    );
+    authenticate(mockRequest as AuthRequest, mockResponse as Response, nextFunction);
 
     expect(jwt.verify).toHaveBeenCalledWith("validtoken", "test-secret-key");
     expect(mockRequest.user).toEqual(decodedUser);
     expect(nextFunction).toHaveBeenCalled();
     expect(responseStatus).not.toHaveBeenCalled();
   });
-
 });

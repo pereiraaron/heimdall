@@ -24,11 +24,7 @@ router.get("/", getProjectMembers);
 router.get("/:userId", getMemberById);
 
 // Invite a new member (Admin+)
-router.post(
-  "/invite",
-  authoriseRole([MembershipRole.Admin, MembershipRole.Owner]),
-  inviteMember
-);
+router.post("/invite", authoriseRole([MembershipRole.Admin, MembershipRole.Owner]), inviteMember);
 
 // Update member role (Admin+)
 router.put(

@@ -26,18 +26,12 @@ jest.mock("@controllers", () => ({
   verifyAuthentication: jest.fn((req, res) =>
     res.status(200).json({ message: "Login successful", accessToken: "token" })
   ),
-  listCredentials: jest.fn((req, res) =>
-    res.status(200).json({ credentials: [] })
-  ),
+  listCredentials: jest.fn((req, res) => res.status(200).json({ credentials: [] })),
   updateCredential: jest.fn((req, res) =>
     res.status(200).json({ credential: { name: "Updated" } })
   ),
-  deleteCredential: jest.fn((req, res) =>
-    res.status(204).send()
-  ),
-  optOutPasskey: jest.fn((req, res) =>
-    res.status(200).json({ message: "Opted out" })
-  ),
+  deleteCredential: jest.fn((req, res) => res.status(204).send()),
+  optOutPasskey: jest.fn((req, res) => res.status(200).json({ message: "Opted out" })),
   // Other controller exports needed by the barrel
   login: jest.fn(),
   register: jest.fn(),
@@ -101,8 +95,7 @@ describe("Passkey Routes", () => {
 
   describe("POST /auth/passkey/register/options", () => {
     it("should return 401 without Bearer token", async () => {
-      const response = await request(app)
-        .post("/auth/passkey/register/options");
+      const response = await request(app).post("/auth/passkey/register/options");
 
       expect(response.status).toBe(401);
       expect(authenticate).toHaveBeenCalled();
@@ -143,8 +136,7 @@ describe("Passkey Routes", () => {
 
   describe("POST /auth/passkey/login/options", () => {
     it("should return 401 without API key", async () => {
-      const response = await request(app)
-        .post("/auth/passkey/login/options");
+      const response = await request(app).post("/auth/passkey/login/options");
 
       expect(response.status).toBe(401);
       expect(validateApiKey).toHaveBeenCalled();
@@ -184,8 +176,7 @@ describe("Passkey Routes", () => {
 
   describe("GET /auth/passkey/credentials", () => {
     it("should return 401 without Bearer token", async () => {
-      const response = await request(app)
-        .get("/auth/passkey/credentials");
+      const response = await request(app).get("/auth/passkey/credentials");
 
       expect(response.status).toBe(401);
       expect(listCredentials).not.toHaveBeenCalled();
@@ -224,8 +215,7 @@ describe("Passkey Routes", () => {
 
   describe("DELETE /auth/passkey/credentials/:id", () => {
     it("should return 401 without Bearer token", async () => {
-      const response = await request(app)
-        .delete("/auth/passkey/credentials/cred-123");
+      const response = await request(app).delete("/auth/passkey/credentials/cred-123");
 
       expect(response.status).toBe(401);
       expect(deleteCredential).not.toHaveBeenCalled();
@@ -243,8 +233,7 @@ describe("Passkey Routes", () => {
 
   describe("POST /auth/passkey/opt-out", () => {
     it("should return 401 without Bearer token", async () => {
-      const response = await request(app)
-        .post("/auth/passkey/opt-out");
+      const response = await request(app).post("/auth/passkey/opt-out");
 
       expect(response.status).toBe(401);
       expect(optOutPasskey).not.toHaveBeenCalled();

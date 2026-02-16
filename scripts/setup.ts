@@ -51,9 +51,7 @@ const setup = async () => {
       const dropped = await model.syncIndexes();
 
       const indexes = await model.listIndexes();
-      const indexNames = indexes
-        .filter((idx) => idx.name !== "_id_")
-        .map((idx) => idx.name);
+      const indexNames = indexes.filter((idx) => idx.name !== "_id_").map((idx) => idx.name);
 
       if (indexNames.length > 0) {
         console.log(`  ✅ ${name} (${indexNames.length} indexes: ${indexNames.join(", ")})`);

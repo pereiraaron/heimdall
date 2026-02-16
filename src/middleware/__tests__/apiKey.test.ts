@@ -34,11 +34,7 @@ describe("API Key Middleware", () => {
   });
 
   it("should return 401 if API key is missing", async () => {
-    await validateApiKey(
-      mockRequest as ApiKeyRequest,
-      mockResponse as Response,
-      mockNext
-    );
+    await validateApiKey(mockRequest as ApiKeyRequest, mockResponse as Response, mockNext);
 
     expect(responseStatus).toHaveBeenCalledWith(401);
     expect(responseJson).toHaveBeenCalledWith({
@@ -51,11 +47,7 @@ describe("API Key Middleware", () => {
     mockRequest.headers = { "x-api-key": "invalid-key" };
     (Project.findOne as jest.Mock).mockResolvedValue(null);
 
-    await validateApiKey(
-      mockRequest as ApiKeyRequest,
-      mockResponse as Response,
-      mockNext
-    );
+    await validateApiKey(mockRequest as ApiKeyRequest, mockResponse as Response, mockNext);
 
     expect(Project.findOne).toHaveBeenCalledWith({ apiKey: "invalid-key" });
     expect(responseStatus).toHaveBeenCalledWith(401);
@@ -74,11 +66,7 @@ describe("API Key Middleware", () => {
     };
     (Project.findOne as jest.Mock).mockResolvedValue(mockProject);
 
-    await validateApiKey(
-      mockRequest as ApiKeyRequest,
-      mockResponse as Response,
-      mockNext
-    );
+    await validateApiKey(mockRequest as ApiKeyRequest, mockResponse as Response, mockNext);
 
     expect(Project.findOne).toHaveBeenCalledWith({ apiKey: "hm_valid_key" });
     expect(mockRequest.projectId).toBe("project-123");
@@ -90,11 +78,7 @@ describe("API Key Middleware", () => {
     mockRequest.headers = { "x-api-key": "hm_valid_key" };
     (Project.findOne as jest.Mock).mockRejectedValue(new Error("Database error"));
 
-    await validateApiKey(
-      mockRequest as ApiKeyRequest,
-      mockResponse as Response,
-      mockNext
-    );
+    await validateApiKey(mockRequest as ApiKeyRequest, mockResponse as Response, mockNext);
 
     expect(responseStatus).toHaveBeenCalledWith(500);
     expect(responseJson).toHaveBeenCalledWith({

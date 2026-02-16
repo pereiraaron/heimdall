@@ -81,11 +81,10 @@ export const updateUserById = async (req: AuthRequest, res: Response) => {
     if (email) updateData.email = email;
     if (username) updateData.username = username;
 
-    const updatedUser = await User.findByIdAndUpdate(
-      userId,
-      updateData,
-      { new: true, runValidators: true }
-    );
+    const updatedUser = await User.findByIdAndUpdate(userId, updateData, {
+      new: true,
+      runValidators: true,
+    });
 
     res.status(200).json({
       message: "User updated",

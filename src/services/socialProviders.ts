@@ -1,10 +1,5 @@
 import jwt from "jsonwebtoken";
-import {
-  SocialProvider,
-  SocialProfile,
-  ISocialProviderConfig,
-  IAppleProviderConfig,
-} from "@types";
+import { SocialProvider, SocialProfile, ISocialProviderConfig, IAppleProviderConfig } from "@types";
 
 const GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token";
 const GITHUB_TOKEN_URL = "https://github.com/login/oauth/access_token";
@@ -114,17 +109,14 @@ const githubExchange = async (
     if (emailsResponse.ok) {
       const emails = await emailsResponse.json();
       const primary = emails.find(
-        (e: { primary: boolean; verified: boolean; email: string }) =>
-          e.primary && e.verified
+        (e: { primary: boolean; verified: boolean; email: string }) => e.primary && e.verified
       );
       email = primary?.email;
     }
   }
 
   if (!email) {
-    throw new Error(
-      "Could not retrieve email from GitHub. Ensure email scope is granted."
-    );
+    throw new Error("Could not retrieve email from GitHub. Ensure email scope is granted.");
   }
 
   return {
