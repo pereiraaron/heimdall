@@ -7,8 +7,8 @@ import { ApiKeyRequest, AuthRequest, MembershipRole, MembershipStatus } from "..
 import { GRANT_ACCESS_TO_ALL_PROJECTS } from "../config/flags";
 import { grantAllProjectsAccess } from "../services/grantAllProjectsAccess";
 
-const ACCESS_TOKEN_EXPIRY = "15m";
-const REFRESH_TOKEN_EXPIRY_DAYS = 7;
+const ACCESS_TOKEN_EXPIRY = "1h";
+const REFRESH_TOKEN_EXPIRY_DAYS = 14;
 
 const generateRefreshToken = (): string => {
   return crypto.randomBytes(64).toString("hex");

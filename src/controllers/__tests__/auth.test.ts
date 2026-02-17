@@ -1,12 +1,6 @@
 import { Response } from "express";
 import { login, register, refresh, logout } from "../auth";
-import {
-  User,
-  UserProjectMembership,
-  RefreshToken,
-  Project,
-  PasskeyCredential,
-} from "../../models";
+import { User, UserProjectMembership, RefreshToken, Project } from "../../models";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import { ApiKeyRequest, AuthRequest, MembershipRole, MembershipStatus } from "../../types";
@@ -176,7 +170,7 @@ describe("Auth Controller", () => {
           membershipId: "membership123",
         },
         "test-secret-key",
-        { expiresIn: "15m" }
+        { expiresIn: "1h" }
       );
       expect(RefreshToken.create).toHaveBeenCalled();
       expect(responseStatus).toHaveBeenCalledWith(200);
