@@ -7,7 +7,7 @@ import { ApiKeyRequest, AuthRequest, MembershipRole, MembershipStatus } from "..
 import { GRANT_ACCESS_TO_ALL_PROJECTS } from "../config/flags";
 import { grantAllProjectsAccess } from "../services/grantAllProjectsAccess";
 
-const ACCESS_TOKEN_EXPIRY = "1h";
+const ACCESS_TOKEN_EXPIRY = "24h";
 const REFRESH_TOKEN_EXPIRY_DAYS = 14;
 
 const generateRefreshToken = (): string => {

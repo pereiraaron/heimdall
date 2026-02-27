@@ -170,7 +170,7 @@ describe("Auth Controller", () => {
           membershipId: "membership123",
         },
         "test-secret-key",
-        { expiresIn: "1h" }
+        { expiresIn: "24h" }
       );
       expect(RefreshToken.create).toHaveBeenCalled();
       expect(responseStatus).toHaveBeenCalledWith(200);
