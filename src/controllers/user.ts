@@ -11,11 +11,13 @@ export const getAllUsers = async (req: AuthRequest, res: Response) => {
     const memberships = await UserProjectMembership.find({
       projectId,
       status: MembershipStatus.Active,
-    }).populate("userId", "email username createdAt updatedAt");
+    })
+      .populate("userId", "email username createdAt updatedAt")
+      .lean();
 
     // Transform to user-centric response with membership info
     const users = memberships.map((m) => ({
-      ...((m.userId as any)?.toObject() || {}),
+      ...((m.userId as any) || {}),
       role: m.role,
       membershipId: m._id,
       joinedAt: m.joinedAt,
@@ -37,7 +39,9 @@ export const getUserById = async (req: AuthRequest, res: Response) => {
       userId,
       projectId,
       status: MembershipStatus.Active,
-    }).populate("userId", "email username createdAt updatedAt");
+    })
+      .populate("userId", "email username createdAt updatedAt")
+      .lean();
 
     if (!membership) {
       res.status(404).json({ message: "User not found in this project" });
@@ -45,7 +49,7 @@ export const getUserById = async (req: AuthRequest, res: Response) => {
     }
 
     const user = {
-      ...((membership.userId as any)?.toObject() || {}),
+      ...((membership.userId as any) || {}),
       role: membership.role,
       membershipId: membership._id,
       joinedAt: membership.joinedAt,

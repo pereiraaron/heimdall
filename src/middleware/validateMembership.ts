@@ -17,7 +17,7 @@ export const validateMembership = (requiredRoles?: MembershipRole[]) => {
         userId,
         projectId,
         status: MembershipStatus.Active,
-      });
+      }).lean();
 
       if (!membership) {
         res.status(403).json({ message: "No active membership for this project" });

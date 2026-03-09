@@ -136,15 +136,21 @@ describe("Social Auth Controller", () => {
       (SocialAccount.findOne as jest.Mock).mockResolvedValue({
         userId: "existing-user-id",
       });
-      (User.findById as jest.Mock).mockResolvedValue({
-        _id: { toString: () => "existing-user-id" },
-        email: "social@example.com",
-        username: "Social User",
-        isActive: true,
+      (User.findById as jest.Mock).mockReturnValue({
+        select: jest.fn().mockReturnValue({
+          lean: jest.fn().mockResolvedValue({
+            _id: { toString: () => "existing-user-id" },
+            email: "social@example.com",
+            username: "Social User",
+            isActive: true,
+          }),
+        }),
       });
-      (UserProjectMembership.findOne as jest.Mock).mockResolvedValue({
-        _id: { toString: () => "membership-123" },
-        role: MembershipRole.Member,
+      (UserProjectMembership.findOne as jest.Mock).mockReturnValue({
+        lean: jest.fn().mockResolvedValue({
+          _id: { toString: () => "membership-123" },
+          role: MembershipRole.Member,
+        }),
       });
       (RefreshToken.create as jest.Mock).mockResolvedValue({});
 
@@ -165,9 +171,16 @@ describe("Social Auth Controller", () => {
       (SocialAccount.findOne as jest.Mock).mockResolvedValue({
         userId: "disabled-user-id",
       });
-      (User.findById as jest.Mock).mockResolvedValue({
-        _id: "disabled-user-id",
-        isActive: false,
+      (User.findById as jest.Mock).mockReturnValue({
+        select: jest.fn().mockReturnValue({
+          lean: jest.fn().mockResolvedValue({
+            _id: "disabled-user-id",
+            isActive: false,
+          }),
+        }),
+      });
+      (UserProjectMembership.findOne as jest.Mock).mockReturnValue({
+        lean: jest.fn().mockResolvedValue(null),
       });
 
       await socialLogin(mockRequest as ApiKeyRequest, mockResponse as Response);
@@ -185,11 +198,17 @@ describe("Social Auth Controller", () => {
       (SocialAccount.findOne as jest.Mock).mockResolvedValue({
         userId: "user-no-membership",
       });
-      (User.findById as jest.Mock).mockResolvedValue({
-        _id: "user-no-membership",
-        isActive: true,
+      (User.findById as jest.Mock).mockReturnValue({
+        select: jest.fn().mockReturnValue({
+          lean: jest.fn().mockResolvedValue({
+            _id: "user-no-membership",
+            isActive: true,
+          }),
+        }),
       });
-      (UserProjectMembership.findOne as jest.Mock).mockResolvedValue(null);
+      (UserProjectMembership.findOne as jest.Mock).mockReturnValue({
+        lean: jest.fn().mockResolvedValue(null),
+      });
 
       await socialLogin(mockRequest as ApiKeyRequest, mockResponse as Response);
 
@@ -203,7 +222,9 @@ describe("Social Auth Controller", () => {
         },
       });
       (SocialAccount.findOne as jest.Mock).mockResolvedValue(null);
-      (User.findOne as jest.Mock).mockResolvedValue(null);
+      (User.findOne as jest.Mock).mockReturnValue({
+        select: jest.fn().mockResolvedValue(null),
+      });
       (User.create as jest.Mock).mockResolvedValue({
         _id: { toString: () => "new-user-id" },
         email: "social@example.com",
@@ -363,11 +384,13 @@ describe("Social Auth Controller", () => {
 
     it("should return 400 if this is the only auth method", async () => {
       (User.findById as jest.Mock).mockReturnValue({
-        select: jest.fn().mockResolvedValue({ password: null }),
+        select: jest.fn().mockReturnValue({
+          lean: jest.fn().mockResolvedValue({ password: null }),
+        }),
       });
-      (SocialAccount.find as jest.Mock).mockResolvedValue([
-        { provider: "google", userId: "user-123" },
-      ]);
+      (SocialAccount.find as jest.Mock).mockReturnValue({
+        lean: jest.fn().mockResolvedValue([{ provider: "google", userId: "user-123" }]),
+      });
 
       await unlinkSocialAccount(mockRequest as AuthRequest, mockResponse as Response);
 
@@ -381,11 +404,13 @@ describe("Social Auth Controller", () => {
 
     it("should return 404 if no linked account found", async () => {
       (User.findById as jest.Mock).mockReturnValue({
-        select: jest.fn().mockResolvedValue({ password: "hashed-pw" }),
+        select: jest.fn().mockReturnValue({
+          lean: jest.fn().mockResolvedValue({ password: "hashed-pw" }),
+        }),
       });
-      (SocialAccount.find as jest.Mock).mockResolvedValue([
-        { provider: "google", userId: "user-123" },
-      ]);
+      (SocialAccount.find as jest.Mock).mockReturnValue({
+        lean: jest.fn().mockResolvedValue([{ provider: "google", userId: "user-123" }]),
+      });
       (SocialAccount.findOneAndDelete as jest.Mock).mockResolvedValue(null);
 
       await unlinkSocialAccount(mockRequest as AuthRequest, mockResponse as Response);
@@ -395,11 +420,13 @@ describe("Social Auth Controller", () => {
 
     it("should return 200 on successful unlink when user has password", async () => {
       (User.findById as jest.Mock).mockReturnValue({
-        select: jest.fn().mockResolvedValue({ password: "hashed-pw" }),
+        select: jest.fn().mockReturnValue({
+          lean: jest.fn().mockResolvedValue({ password: "hashed-pw" }),
+        }),
       });
-      (SocialAccount.find as jest.Mock).mockResolvedValue([
-        { provider: "google", userId: "user-123" },
-      ]);
+      (SocialAccount.find as jest.Mock).mockReturnValue({
+        lean: jest.fn().mockResolvedValue([{ provider: "google", userId: "user-123" }]),
+      });
       (SocialAccount.findOneAndDelete as jest.Mock).mockResolvedValue({ _id: "deleted" });
 
       await unlinkSocialAccount(mockRequest as AuthRequest, mockResponse as Response);
@@ -412,12 +439,16 @@ describe("Social Auth Controller", () => {
 
     it("should allow unlink when user has another social provider", async () => {
       (User.findById as jest.Mock).mockReturnValue({
-        select: jest.fn().mockResolvedValue({ password: null }),
+        select: jest.fn().mockReturnValue({
+          lean: jest.fn().mockResolvedValue({ password: null }),
+        }),
       });
-      (SocialAccount.find as jest.Mock).mockResolvedValue([
-        { provider: "google", userId: "user-123" },
-        { provider: "github", userId: "user-123" },
-      ]);
+      (SocialAccount.find as jest.Mock).mockReturnValue({
+        lean: jest.fn().mockResolvedValue([
+          { provider: "google", userId: "user-123" },
+          { provider: "github", userId: "user-123" },
+        ]),
+      });
       (SocialAccount.findOneAndDelete as jest.Mock).mockResolvedValue({ _id: "deleted" });
 
       await unlinkSocialAccount(mockRequest as AuthRequest, mockResponse as Response);
@@ -427,7 +458,12 @@ describe("Social Auth Controller", () => {
 
     it("should return 500 on error", async () => {
       (User.findById as jest.Mock).mockReturnValue({
-        select: jest.fn().mockRejectedValue(new Error("DB error")),
+        select: jest.fn().mockReturnValue({
+          lean: jest.fn().mockRejectedValue(new Error("DB error")),
+        }),
+      });
+      (SocialAccount.find as jest.Mock).mockReturnValue({
+        lean: jest.fn().mockResolvedValue([]),
       });
 
       await unlinkSocialAccount(mockRequest as AuthRequest, mockResponse as Response);
@@ -454,7 +490,9 @@ describe("Social Auth Controller", () => {
     it("should return 200 with accounts list", async () => {
       const mockAccounts = [{ provider: "google", email: "user@gmail.com" }];
       (SocialAccount.find as jest.Mock).mockReturnValue({
-        select: jest.fn().mockResolvedValue(mockAccounts),
+        select: jest.fn().mockReturnValue({
+          lean: jest.fn().mockResolvedValue(mockAccounts),
+        }),
       });
 
       await listSocialAccounts(mockRequest as AuthRequest, mockResponse as Response);
@@ -465,7 +503,9 @@ describe("Social Auth Controller", () => {
 
     it("should return 500 on error", async () => {
       (SocialAccount.find as jest.Mock).mockReturnValue({
-        select: jest.fn().mockRejectedValue(new Error("DB error")),
+        select: jest.fn().mockReturnValue({
+          lean: jest.fn().mockRejectedValue(new Error("DB error")),
+        }),
       });
 
       await listSocialAccounts(mockRequest as AuthRequest, mockResponse as Response);

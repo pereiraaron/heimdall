@@ -9,6 +9,10 @@ jest.mock("../../models", () => ({
   },
 }));
 
+const mockLean = (value: unknown) => ({
+  lean: jest.fn().mockResolvedValue(value),
+});
+
 describe("validateMembership Middleware", () => {
   let mockRequest: Partial<AuthRequest>;
   let mockResponse: Partial<Response>;
@@ -73,7 +77,7 @@ describe("validateMembership Middleware", () => {
   });
 
   it("should return 403 if no active membership found", async () => {
-    (UserProjectMembership.findOne as jest.Mock).mockResolvedValue(null);
+    (UserProjectMembership.findOne as jest.Mock).mockReturnValue(mockLean(null));
 
     const middleware = validateMembership();
     await middleware(mockRequest as AuthRequest, mockResponse as Response, nextFunction);
@@ -89,13 +93,13 @@ describe("validateMembership Middleware", () => {
     const mockMembership = {
       role: MembershipRole.Member,
     };
-    (UserProjectMembership.findOne as jest.Mock).mockResolvedValue(mockMembership);
+    (UserProjectMembership.findOne as jest.Mock).mockReturnValue(mockLean(mockMembership));
 
     const middleware = validateMembership();
     await middleware(mockRequest as AuthRequest, mockResponse as Response, nextFunction);
 
     expect(nextFunction).toHaveBeenCalled();
-    expect(mockRequest.user!.membership).toBe(mockMembership);
+    expect(mockRequest.user!.membership).toEqual(mockMembership);
     expect(mockRequest.user!.role).toBe(MembershipRole.Member);
   });
 
@@ -103,7 +107,7 @@ describe("validateMembership Middleware", () => {
     const mockMembership = {
       role: MembershipRole.Admin,
     };
-    (UserProjectMembership.findOne as jest.Mock).mockResolvedValue(mockMembership);
+    (UserProjectMembership.findOne as jest.Mock).mockReturnValue(mockLean(mockMembership));
 
     const middleware = validateMembership([MembershipRole.Admin]);
     await middleware(mockRequest as AuthRequest, mockResponse as Response, nextFunction);
@@ -115,7 +119,7 @@ describe("validateMembership Middleware", () => {
     const mockMembership = {
       role: MembershipRole.Member,
     };
-    (UserProjectMembership.findOne as jest.Mock).mockResolvedValue(mockMembership);
+    (UserProjectMembership.findOne as jest.Mock).mockReturnValue(mockLean(mockMembership));
 
     const middleware = validateMembership([MembershipRole.Admin]);
     await middleware(mockRequest as AuthRequest, mockResponse as Response, nextFunction);
@@ -129,7 +133,7 @@ describe("validateMembership Middleware", () => {
     const mockMembership = {
       role: MembershipRole.Owner,
     };
-    (UserProjectMembership.findOne as jest.Mock).mockResolvedValue(mockMembership);
+    (UserProjectMembership.findOne as jest.Mock).mockReturnValue(mockLean(mockMembership));
 
     const middleware = validateMembership([MembershipRole.Member]);
     await middleware(mockRequest as AuthRequest, mockResponse as Response, nextFunction);
@@ -138,7 +142,9 @@ describe("validateMembership Middleware", () => {
   });
 
   it("should return 500 on database error", async () => {
-    (UserProjectMembership.findOne as jest.Mock).mockRejectedValue(new Error("DB error"));
+    (UserProjectMembership.findOne as jest.Mock).mockReturnValue({
+      lean: jest.fn().mockRejectedValue(new Error("DB error")),
+    });
 
     const middleware = validateMembership();
     await middleware(mockRequest as AuthRequest, mockResponse as Response, nextFunction);

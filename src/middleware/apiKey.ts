@@ -11,7 +11,7 @@ export const validateApiKey = async (req: ApiKeyRequest, res: Response, next: Ne
   }
 
   try {
-    const project = await Project.findOne({ apiKey });
+    const project = await Project.findOne({ apiKey }).select("_id").lean();
     if (!project) {
       res.status(401).json({ message: "Invalid API key" });
       return;

@@ -9,6 +9,11 @@ jest.mock("../../models", () => ({
   },
 }));
 
+const mockChain = (value: unknown) => ({
+  select: jest.fn().mockReturnValue({ lean: jest.fn().mockResolvedValue(value) }),
+  lean: jest.fn().mockResolvedValue(value),
+});
+
 describe("API Key Middleware", () => {
   let mockRequest: Partial<ApiKeyRequest>;
   let mockResponse: Partial<Response>;
@@ -45,7 +50,7 @@ describe("API Key Middleware", () => {
 
   it("should return 401 if API key is invalid", async () => {
     mockRequest.headers = { "x-api-key": "invalid-key" };
-    (Project.findOne as jest.Mock).mockResolvedValue(null);
+    (Project.findOne as jest.Mock).mockReturnValue(mockChain(null));
 
     await validateApiKey(mockRequest as ApiKeyRequest, mockResponse as Response, mockNext);
 
@@ -64,7 +69,7 @@ describe("API Key Middleware", () => {
       name: "Test Project",
       apiKey: "hm_valid_key",
     };
-    (Project.findOne as jest.Mock).mockResolvedValue(mockProject);
+    (Project.findOne as jest.Mock).mockReturnValue(mockChain(mockProject));
 
     await validateApiKey(mockRequest as ApiKeyRequest, mockResponse as Response, mockNext);
 
@@ -76,7 +81,11 @@ describe("API Key Middleware", () => {
 
   it("should return 500 on database error", async () => {
     mockRequest.headers = { "x-api-key": "hm_valid_key" };
-    (Project.findOne as jest.Mock).mockRejectedValue(new Error("Database error"));
+    (Project.findOne as jest.Mock).mockReturnValue({
+      select: jest.fn().mockReturnValue({
+        lean: jest.fn().mockRejectedValue(new Error("Database error")),
+      }),
+    });
 
     await validateApiKey(mockRequest as ApiKeyRequest, mockResponse as Response, mockNext);
 

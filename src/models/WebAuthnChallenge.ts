@@ -18,6 +18,7 @@ const webAuthnChallengeSchema = new Schema<IWebAuthnChallenge>({
 
 // TTL index: MongoDB automatically deletes expired challenges
 webAuthnChallengeSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });
+webAuthnChallengeSchema.index({ userId: 1 });
 
 export const WebAuthnChallenge = model<IWebAuthnChallenge>(
   "WebAuthnChallenge",

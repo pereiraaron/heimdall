@@ -6,9 +6,10 @@ import { MembershipRole, MembershipStatus } from "../types";
  * that they don't already belong to.
  */
 export const grantAllProjectsAccess = async (userId: string) => {
-  const allProjects = await Project.find({}, "_id");
-
-  const existingMemberships = await UserProjectMembership.find({ userId }, "projectId");
+  const [allProjects, existingMemberships] = await Promise.all([
+    Project.find({}, "_id").lean(),
+    UserProjectMembership.find({ userId }, "projectId").lean(),
+  ]);
   const existingProjectIds = new Set(existingMemberships.map((m) => m.projectId.toString()));
 
   const newMemberships = allProjects

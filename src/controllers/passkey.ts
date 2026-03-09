@@ -58,16 +58,18 @@ export const generateRegistrationOptions = async (req: AuthRequest, res: Respons
   try {
     const userId = req.user!.id;
     const projectId = req.user!.projectId;
-    const user = await User.findById(userId);
+    const requestOrigin = req.get("origin");
+
+    const [user, { rpId, rpName }, existingCredentials] = await Promise.all([
+      User.findById(userId).select("email").lean(),
+      getWebAuthnConfig(projectId, requestOrigin),
+      PasskeyCredential.find({ userId }).select("credentialId transports").lean(),
+    ]);
 
     if (!user) {
       res.status(404).json({ message: "User not found" });
       return;
     }
-
-    const requestOrigin = req.get("origin");
-    const { rpId, rpName } = await getWebAuthnConfig(projectId, requestOrigin);
-    const existingCredentials = await PasskeyCredential.find({ userId });
 
     const options = await generateRegOptions({
       rpName,
@@ -265,18 +267,20 @@ export const verifyAuthentication = async (req: ApiKeyRequest, res: Response) =>
     storedCredential.counter = newCounter;
     await storedCredential.save();
 
-    // Look up user and membership
-    const user = await User.findById(storedCredential.userId);
+    // Look up user and membership in parallel
+    const [user, membership] = await Promise.all([
+      User.findById(storedCredential.userId).select("email username").lean(),
+      UserProjectMembership.findOne({
+        userId: storedCredential.userId,
+        projectId,
+        status: MembershipStatus.Active,
+      }).lean(),
+    ]);
+
     if (!user) {
       res.status(401).json({ message: "User not found" });
       return;
     }
-
-    const membership = await UserProjectMembership.findOne({
-      userId: user._id,
-      projectId,
-      status: MembershipStatus.Active,
-    });
 
     if (!membership) {
       res.status(403).json({ message: "Access denied. No active membership for this project." });
@@ -311,7 +315,8 @@ export const listCredentials = async (req: AuthRequest, res: Response) => {
   try {
     const credentials = await PasskeyCredential.find({ userId: req.user!.id })
       .select("name deviceType backedUp createdAt")
-      .sort({ createdAt: -1 });
+      .sort({ createdAt: -1 })
+      .lean();
 
     res.status(200).json({ credentials });
   } catch (error) {

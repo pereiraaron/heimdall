@@ -157,7 +157,9 @@ describe("Auth Controller", () => {
       (UserProjectMembership.findOne as jest.Mock).mockResolvedValueOnce(mockMembership);
       (jwt.sign as jest.Mock).mockReturnValueOnce("test-access-token");
       (RefreshToken.create as jest.Mock).mockResolvedValueOnce({});
-      (Project.findById as jest.Mock).mockResolvedValueOnce({ passkeyPolicy: "optional" });
+      (Project.findById as jest.Mock).mockReturnValueOnce({
+        lean: jest.fn().mockResolvedValue({ passkeyPolicy: "optional" }),
+      });
 
       await login(mockRequest as ApiKeyRequest, mockResponse as Response);
 
@@ -249,14 +251,20 @@ describe("Auth Controller", () => {
         isRevoked: false,
         save: jest.fn(),
       });
-      (UserProjectMembership.findOne as jest.Mock).mockResolvedValueOnce({
-        _id: { toString: () => "membership123" },
-        role: MembershipRole.Member,
-        status: MembershipStatus.Active,
+      (UserProjectMembership.findOne as jest.Mock).mockReturnValueOnce({
+        lean: jest.fn().mockResolvedValue({
+          _id: { toString: () => "membership123" },
+          role: MembershipRole.Member,
+          status: MembershipStatus.Active,
+        }),
       });
-      (User.findById as jest.Mock).mockResolvedValueOnce({
-        _id: { toString: () => "user123" },
-        email: "test@example.com",
+      (User.findById as jest.Mock).mockReturnValueOnce({
+        select: jest.fn().mockReturnValue({
+          lean: jest.fn().mockResolvedValue({
+            _id: { toString: () => "user123" },
+            email: "test@example.com",
+          }),
+        }),
       });
       (jwt.sign as jest.Mock).mockReturnValueOnce("new-access-token");
       (RefreshToken.create as jest.Mock).mockResolvedValueOnce({});

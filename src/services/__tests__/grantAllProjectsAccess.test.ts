@@ -12,18 +12,22 @@ jest.mock("../../models", () => ({
   },
 }));
 
+const mockFindLean = (mock: jest.Mock, value: unknown) => {
+  mock.mockReturnValue({ lean: jest.fn().mockResolvedValue(value) });
+};
+
 describe("grantAllProjectsAccess", () => {
   beforeEach(() => {
     jest.clearAllMocks();
   });
 
   it("should create memberships for projects the user is not in", async () => {
-    (Project.find as jest.Mock).mockResolvedValue([
+    mockFindLean(Project.find as jest.Mock, [
       { _id: { toString: () => "p1" } },
       { _id: { toString: () => "p2" } },
       { _id: { toString: () => "p3" } },
     ]);
-    (UserProjectMembership.find as jest.Mock).mockResolvedValue([
+    mockFindLean(UserProjectMembership.find as jest.Mock, [
       { projectId: { toString: () => "p1" } },
     ]);
 
@@ -43,8 +47,8 @@ describe("grantAllProjectsAccess", () => {
   });
 
   it("should not call insertMany if user is already in all projects", async () => {
-    (Project.find as jest.Mock).mockResolvedValue([{ _id: { toString: () => "p1" } }]);
-    (UserProjectMembership.find as jest.Mock).mockResolvedValue([
+    mockFindLean(Project.find as jest.Mock, [{ _id: { toString: () => "p1" } }]);
+    mockFindLean(UserProjectMembership.find as jest.Mock, [
       { projectId: { toString: () => "p1" } },
     ]);
 
@@ -54,8 +58,8 @@ describe("grantAllProjectsAccess", () => {
   });
 
   it("should handle empty project list", async () => {
-    (Project.find as jest.Mock).mockResolvedValue([]);
-    (UserProjectMembership.find as jest.Mock).mockResolvedValue([]);
+    mockFindLean(Project.find as jest.Mock, []);
+    mockFindLean(UserProjectMembership.find as jest.Mock, []);
 
     await grantAllProjectsAccess("user-123");
 
@@ -63,11 +67,11 @@ describe("grantAllProjectsAccess", () => {
   });
 
   it("should create memberships for all projects if user has none", async () => {
-    (Project.find as jest.Mock).mockResolvedValue([
+    mockFindLean(Project.find as jest.Mock, [
       { _id: { toString: () => "p1" } },
       { _id: { toString: () => "p2" } },
     ]);
-    (UserProjectMembership.find as jest.Mock).mockResolvedValue([]);
+    mockFindLean(UserProjectMembership.find as jest.Mock, []);
 
     await grantAllProjectsAccess("user-123");
 

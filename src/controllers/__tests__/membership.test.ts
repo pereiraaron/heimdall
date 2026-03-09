@@ -80,7 +80,9 @@ describe("Membership Controller", () => {
     it("should return 200 with members list", async () => {
       const mockMembers = [{ userId: "u1", role: MembershipRole.Member }];
       (UserProjectMembership.find as jest.Mock).mockReturnValue({
-        populate: jest.fn().mockResolvedValue(mockMembers),
+        populate: jest.fn().mockReturnValue({
+          lean: jest.fn().mockResolvedValue(mockMembers),
+        }),
       });
 
       await getProjectMembers(mockRequest as AuthRequest, mockResponse as Response);
@@ -95,7 +97,9 @@ describe("Membership Controller", () => {
 
     it("should return 500 on error", async () => {
       (UserProjectMembership.find as jest.Mock).mockReturnValue({
-        populate: jest.fn().mockRejectedValue(new Error("DB error")),
+        populate: jest.fn().mockReturnValue({
+          lean: jest.fn().mockRejectedValue(new Error("DB error")),
+        }),
       });
 
       await getProjectMembers(mockRequest as AuthRequest, mockResponse as Response);
@@ -110,7 +114,9 @@ describe("Membership Controller", () => {
       mockRequest.params = { userId: "target-user-id" };
       const mockMembership = { userId: "target-user-id", role: MembershipRole.Member };
       (UserProjectMembership.findOne as jest.Mock).mockReturnValue({
-        populate: jest.fn().mockResolvedValue(mockMembership),
+        populate: jest.fn().mockReturnValue({
+          lean: jest.fn().mockResolvedValue(mockMembership),
+        }),
       });
 
       await getMemberById(mockRequest as AuthRequest, mockResponse as Response);
@@ -122,7 +128,9 @@ describe("Membership Controller", () => {
     it("should return 404 when member not found", async () => {
       mockRequest.params = { userId: "nonexistent-id" };
       (UserProjectMembership.findOne as jest.Mock).mockReturnValue({
-        populate: jest.fn().mockResolvedValue(null),
+        populate: jest.fn().mockReturnValue({
+          lean: jest.fn().mockResolvedValue(null),
+        }),
       });
 
       await getMemberById(mockRequest as AuthRequest, mockResponse as Response);
@@ -134,7 +142,9 @@ describe("Membership Controller", () => {
     it("should return 500 on error", async () => {
       mockRequest.params = { userId: "target-user-id" };
       (UserProjectMembership.findOne as jest.Mock).mockReturnValue({
-        populate: jest.fn().mockRejectedValue(new Error("DB error")),
+        populate: jest.fn().mockReturnValue({
+          lean: jest.fn().mockRejectedValue(new Error("DB error")),
+        }),
       });
 
       await getMemberById(mockRequest as AuthRequest, mockResponse as Response);

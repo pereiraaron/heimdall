@@ -96,9 +96,11 @@ export const login = async (req: ApiKeyRequest, res: Response) => {
 
     // Check if passkey setup should be nudged
     let passkeySetupRequired: boolean | undefined;
-    const project = await Project.findById(projectId);
+    const [project, hasPasskeys] = await Promise.all([
+      Project.findById(projectId).lean(),
+      PasskeyCredential.exists({ userId: user._id }),
+    ]);
     if (project?.passkeyPolicy === "encouraged") {
-      const hasPasskeys = await PasskeyCredential.exists({ userId: user._id });
       const optedOut = membership.metadata?.preferences?.passkeyOptedOut === true;
       if (!hasPasskeys && !optedOut) {
         passkeySetupRequired = true;
@@ -150,22 +152,22 @@ export const refresh = async (req: ApiKeyRequest, res: Response) => {
       return;
     }
 
-    // Revoke old refresh token (rotation)
+    // Revoke old refresh token (rotation) and verify user/membership in parallel
     storedToken.isRevoked = true;
-    await storedToken.save();
-
-    // Verify user and membership still exist and are active
-    const membership = await UserProjectMembership.findOne({
-      _id: storedToken.membershipId,
-      status: MembershipStatus.Active,
-    });
+    const [, membership, user] = await Promise.all([
+      storedToken.save(),
+      UserProjectMembership.findOne({
+        _id: storedToken.membershipId,
+        status: MembershipStatus.Active,
+      }).lean(),
+      User.findById(storedToken.userId).select("email username").lean(),
+    ]);
 
     if (!membership) {
       res.status(403).json({ message: "Membership no longer active" });
       return;
     }
 
-    const user = await User.findById(storedToken.userId);
     if (!user) {
       res.status(401).json({ message: "User not found" });
       return;

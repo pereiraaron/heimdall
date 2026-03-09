@@ -82,6 +82,14 @@ describe("Passkey Controller", () => {
 
     // Default: project has no per-project WebAuthn config, falls back to env vars
     (Project.findById as jest.Mock).mockResolvedValue(null);
+
+    // Default chainable mocks for User.findById and UserProjectMembership.findOne
+    (User.findById as jest.Mock).mockReturnValue({
+      select: jest.fn().mockReturnValue({ lean: jest.fn().mockResolvedValue(null) }),
+    });
+    (UserProjectMembership.findOne as jest.Mock).mockReturnValue({
+      lean: jest.fn().mockResolvedValue(null),
+    });
   });
 
   afterAll(() => {
@@ -101,11 +109,16 @@ describe("Passkey Controller", () => {
     };
 
     it("should return 200 with registration options", async () => {
-      (User.findById as jest.Mock).mockResolvedValueOnce({
-        _id: "user123",
-        email: "test@example.com",
+      (User.findById as jest.Mock).mockReturnValueOnce({
+        select: jest.fn().mockReturnValue({
+          lean: jest.fn().mockResolvedValue({ _id: "user123", email: "test@example.com" }),
+        }),
       });
-      (PasskeyCredential.find as jest.Mock).mockResolvedValueOnce([]);
+      (PasskeyCredential.find as jest.Mock).mockReturnValueOnce({
+        select: jest.fn().mockReturnValue({
+          lean: jest.fn().mockResolvedValue([]),
+        }),
+      });
       simpleWebAuthn.generateRegistrationOptions.mockResolvedValueOnce({
         challenge: "test-challenge",
         rp: { name: "Heimdall", id: "localhost" },
@@ -129,7 +142,16 @@ describe("Passkey Controller", () => {
     });
 
     it("should return 404 if user not found", async () => {
-      (User.findById as jest.Mock).mockResolvedValueOnce(null);
+      (User.findById as jest.Mock).mockReturnValueOnce({
+        select: jest.fn().mockReturnValue({
+          lean: jest.fn().mockResolvedValue(null),
+        }),
+      });
+      (PasskeyCredential.find as jest.Mock).mockReturnValueOnce({
+        select: jest.fn().mockReturnValue({
+          lean: jest.fn().mockResolvedValue([]),
+        }),
+      });
 
       await generateRegistrationOptions(
         mockReq as AuthRequest,
@@ -140,7 +162,16 @@ describe("Passkey Controller", () => {
     });
 
     it("should return 500 on error", async () => {
-      (User.findById as jest.Mock).mockRejectedValueOnce(new Error("DB error"));
+      (User.findById as jest.Mock).mockReturnValueOnce({
+        select: jest.fn().mockReturnValue({
+          lean: jest.fn().mockRejectedValue(new Error("DB error")),
+        }),
+      });
+      (PasskeyCredential.find as jest.Mock).mockReturnValueOnce({
+        select: jest.fn().mockReturnValue({
+          lean: jest.fn().mockResolvedValue([]),
+        }),
+      });
 
       await generateRegistrationOptions(
         mockReq as AuthRequest,
@@ -348,15 +379,21 @@ describe("Passkey Controller", () => {
         verified: true,
         authenticationInfo: { newCounter: 1 },
       });
-      (User.findById as jest.Mock).mockResolvedValueOnce({
-        _id: { toString: () => "user123" },
-        email: "test@example.com",
-        username: "testuser",
+      (User.findById as jest.Mock).mockReturnValueOnce({
+        select: jest.fn().mockReturnValue({
+          lean: jest.fn().mockResolvedValue({
+            _id: { toString: () => "user123" },
+            email: "test@example.com",
+            username: "testuser",
+          }),
+        }),
       });
-      (UserProjectMembership.findOne as jest.Mock).mockResolvedValueOnce({
-        _id: { toString: () => "membership123" },
-        role: MembershipRole.Member,
-        status: MembershipStatus.Active,
+      (UserProjectMembership.findOne as jest.Mock).mockReturnValueOnce({
+        lean: jest.fn().mockResolvedValue({
+          _id: { toString: () => "membership123" },
+          role: MembershipRole.Member,
+          status: MembershipStatus.Active,
+        }),
       });
       (RefreshToken.create as jest.Mock).mockResolvedValueOnce({});
 
@@ -453,11 +490,17 @@ describe("Passkey Controller", () => {
         verified: true,
         authenticationInfo: { newCounter: 1 },
       });
-      (User.findById as jest.Mock).mockResolvedValueOnce({
-        _id: { toString: () => "user123" },
-        email: "test@example.com",
+      (User.findById as jest.Mock).mockReturnValueOnce({
+        select: jest.fn().mockReturnValue({
+          lean: jest.fn().mockResolvedValue({
+            _id: { toString: () => "user123" },
+            email: "test@example.com",
+          }),
+        }),
       });
-      (UserProjectMembership.findOne as jest.Mock).mockResolvedValueOnce(null);
+      (UserProjectMembership.findOne as jest.Mock).mockReturnValueOnce({
+        lean: jest.fn().mockResolvedValue(null),
+      });
 
       await verifyAuthentication(
         mockReq as ApiKeyRequest,
@@ -485,7 +528,9 @@ describe("Passkey Controller", () => {
       ];
       (PasskeyCredential.find as jest.Mock).mockReturnValueOnce({
         select: jest.fn().mockReturnValue({
-          sort: jest.fn().mockResolvedValueOnce(mockCredentials),
+          sort: jest.fn().mockReturnValue({
+            lean: jest.fn().mockResolvedValue(mockCredentials),
+          }),
         }),
       });
 

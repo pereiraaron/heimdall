@@ -67,18 +67,20 @@ export const socialLogin = async (req: ApiKeyRequest, res: Response) => {
     });
 
     if (existingAccount) {
-      // Returning user — log them in
-      const user = await User.findById(existingAccount.userId);
+      // Returning user — log them in (parallel lookups)
+      const [user, membership] = await Promise.all([
+        User.findById(existingAccount.userId).select("email username isActive").lean(),
+        UserProjectMembership.findOne({
+          userId: existingAccount.userId,
+          projectId,
+          status: MembershipStatus.Active,
+        }).lean(),
+      ]);
+
       if (!user || !user.isActive) {
         res.status(401).json({ message: "Account is disabled" });
         return;
       }
-
-      const membership = await UserProjectMembership.findOne({
-        userId: user._id,
-        projectId,
-        status: MembershipStatus.Active,
-      });
 
       if (!membership) {
         res.status(403).json({
@@ -110,7 +112,7 @@ export const socialLogin = async (req: ApiKeyRequest, res: Response) => {
     }
 
     // Social account not linked yet — check by email
-    let user = await User.findOne({ email: profile.email });
+    let user = await User.findOne({ email: profile.email }).select("email username isActive");
     let membership;
 
     if (user) {
@@ -275,8 +277,10 @@ export const unlinkSocialAccount = async (req: AuthRequest, res: Response) => {
 
   try {
     // Ensure user has at least one other auth method
-    const user = await User.findById(userId).select("+password");
-    const socialAccounts = await SocialAccount.find({ userId });
+    const [user, socialAccounts] = await Promise.all([
+      User.findById(userId).select("+password").lean(),
+      SocialAccount.find({ userId }).lean(),
+    ]);
     const hasPassword = !!user?.password;
     const otherSocialAccounts = socialAccounts.filter((a) => a.provider !== provider);
 
@@ -308,9 +312,9 @@ export const listSocialAccounts = async (req: AuthRequest, res: Response) => {
   const userId = req.user!.id;
 
   try {
-    const accounts = await SocialAccount.find({ userId }).select(
-      "provider email displayName createdAt"
-    );
+    const accounts = await SocialAccount.find({ userId })
+      .select("provider email displayName createdAt")
+      .lean();
 
     res.status(200).json({ accounts });
   } catch (error) {

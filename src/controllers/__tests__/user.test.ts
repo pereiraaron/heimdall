@@ -93,7 +93,9 @@ describe("User Controller", () => {
       ];
 
       (UserProjectMembership.find as jest.Mock).mockReturnValue({
-        populate: jest.fn().mockResolvedValue(mockMemberships),
+        populate: jest.fn().mockReturnValue({
+          lean: jest.fn().mockResolvedValue(mockMemberships),
+        }),
       });
 
       await getAllUsers(mockRequest as AuthRequest, mockResponse as Response);
@@ -108,7 +110,9 @@ describe("User Controller", () => {
     it("should handle errors and return status 500", async () => {
       const error = new Error("Database error");
       (UserProjectMembership.find as jest.Mock).mockReturnValue({
-        populate: jest.fn().mockRejectedValue(error),
+        populate: jest.fn().mockReturnValue({
+          lean: jest.fn().mockRejectedValue(error),
+        }),
       });
 
       await getAllUsers(mockRequest as AuthRequest, mockResponse as Response);
@@ -140,7 +144,9 @@ describe("User Controller", () => {
       };
 
       (UserProjectMembership.findOne as jest.Mock).mockReturnValue({
-        populate: jest.fn().mockResolvedValue(mockMembership),
+        populate: jest.fn().mockReturnValue({
+          lean: jest.fn().mockResolvedValue(mockMembership),
+        }),
       });
 
       await getUserById(mockRequest as AuthRequest, mockResponse as Response);
@@ -155,7 +161,9 @@ describe("User Controller", () => {
 
     it("should return 404 when user does not exist in project", async () => {
       (UserProjectMembership.findOne as jest.Mock).mockReturnValue({
-        populate: jest.fn().mockResolvedValue(null),
+        populate: jest.fn().mockReturnValue({
+          lean: jest.fn().mockResolvedValue(null),
+        }),
       });
 
       await getUserById(mockRequest as AuthRequest, mockResponse as Response);
@@ -167,7 +175,9 @@ describe("User Controller", () => {
     it("should handle errors and return status 500", async () => {
       const error = new Error("Database error");
       (UserProjectMembership.findOne as jest.Mock).mockReturnValue({
-        populate: jest.fn().mockRejectedValue(error),
+        populate: jest.fn().mockReturnValue({
+          lean: jest.fn().mockRejectedValue(error),
+        }),
       });
 
       await getUserById(mockRequest as AuthRequest, mockResponse as Response);

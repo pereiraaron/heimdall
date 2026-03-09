@@ -13,7 +13,9 @@ export const getProjectMembers = async (req: AuthRequest, res: Response) => {
     const memberships = await UserProjectMembership.find({
       projectId,
       status: { $in: [MembershipStatus.Active, MembershipStatus.Pending] },
-    }).populate("userId", "email username");
+    })
+      .populate("userId", "email username")
+      .lean();
 
     res.status(200).json(memberships);
   } catch (error) {
@@ -29,7 +31,9 @@ export const getMemberById = async (req: AuthRequest, res: Response) => {
     const membership = await UserProjectMembership.findOne({
       userId,
       projectId,
-    }).populate("userId", "email username");
+    })
+      .populate("userId", "email username")
+      .lean();
 
     if (!membership) {
       res.status(404).json({ message: "Member not found" });
