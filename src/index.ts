@@ -11,9 +11,9 @@ import socialAuthRoutes from "./routes/socialAuth";
 
 dotenv.config();
 
-// if (!process.env.JWT_SECRET) {
-//   throw new Error("JWT_SECRET environment variable is required");
-// }
+if (!process.env.JWT_SECRET) {
+  throw new Error("JWT_SECRET environment variable is required");
+}
 
 const app: Express = express();
 const PORT = process.env.PORT || 7001;
@@ -49,13 +49,17 @@ app.get("/", (_, res) => {
   res.status(200).json({ message: "Heimdall is guarding your API!" });
 });
 
-connectToDB();
+const start = async () => {
+  await connectToDB();
 
-// Only skip listening on Vercel (serverless)
-if (!process.env.VERCEL) {
-  app.listen(PORT, () => {
-    console.log(`Heimdall is guarding on port ${PORT}`);
-  });
-}
+  // Only skip listening on Vercel (serverless)
+  if (!process.env.VERCEL) {
+    app.listen(PORT, () => {
+      console.log(`Heimdall is guarding on port ${PORT}`);
+    });
+  }
+};
+
+start();
 
 export default app;

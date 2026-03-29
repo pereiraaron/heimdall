@@ -129,10 +129,10 @@ export const socialLogin = async (req: ApiKeyRequest, res: Response) => {
 
       if (membership) {
         if (membership.status !== MembershipStatus.Active) {
-          // Reactivate suspended/pending membership
-          membership.status = MembershipStatus.Active;
-          membership.joinedAt = new Date();
-          await membership.save();
+          res.status(403).json({
+            message: "Access denied. Your membership is not active for this project.",
+          });
+          return;
         }
       } else {
         // Create membership for existing user in this project

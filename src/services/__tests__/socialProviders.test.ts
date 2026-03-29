@@ -312,7 +312,7 @@ describe("socialProviders", () => {
       ).rejects.toThrow("Invalid Apple ID token");
     });
 
-    it("should return empty email if not provided by Apple", async () => {
+    it("should throw if email not provided by Apple", async () => {
       mockFetch.mockResolvedValue({
         ok: true,
         json: jest.fn().mockResolvedValue({ id_token: "apple-token" }),
@@ -321,14 +321,14 @@ describe("socialProviders", () => {
         sub: "apple-user-456",
       });
 
-      const result = await exchangeCodeForProfile(
-        SocialProvider.Apple,
-        "auth-code",
-        "http://localhost/callback",
-        mockAppleConfig
-      );
-
-      expect(result.email).toBe("");
+      await expect(
+        exchangeCodeForProfile(
+          SocialProvider.Apple,
+          "auth-code",
+          "http://localhost/callback",
+          mockAppleConfig
+        )
+      ).rejects.toThrow("Apple did not provide an email");
     });
   });
 

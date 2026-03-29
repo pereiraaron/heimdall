@@ -189,9 +189,13 @@ const appleExchange = async (
     throw new Error("Invalid Apple ID token");
   }
 
+  if (!decoded.email) {
+    throw new Error("Apple did not provide an email. Ensure the 'email' scope is requested.");
+  }
+
   return {
     providerUserId: decoded.sub,
-    email: decoded.email || "",
+    email: decoded.email,
     displayName: undefined,
   };
 };

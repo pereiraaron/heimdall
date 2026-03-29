@@ -254,13 +254,17 @@ export const verifyAuthentication = async (req: ApiKeyRequest, res: Response) =>
       return;
     }
 
-    // Counter anomaly detection
+    // Counter anomaly detection — block possible cloned authenticator
     const { newCounter } = verification.authenticationInfo;
     if (newCounter <= storedCredential.counter && storedCredential.counter !== 0) {
       console.warn(
         `Passkey counter anomaly detected for credential ${storedCredential.credentialId}. ` +
           `Expected > ${storedCredential.counter}, got ${newCounter}. Possible cloned authenticator.`
       );
+      res
+        .status(401)
+        .json({ message: "Passkey authentication rejected: possible cloned authenticator" });
+      return;
     }
 
     // Update counter
