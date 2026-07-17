@@ -81,7 +81,11 @@ describe("Passkey Controller", () => {
     jest.clearAllMocks();
 
     // Default: project has no per-project WebAuthn config, falls back to env vars
-    (Project.findById as jest.Mock).mockResolvedValue(null);
+    (Project.findById as jest.Mock).mockReturnValue({
+      select: jest.fn().mockReturnValue({
+        lean: jest.fn().mockResolvedValue(null),
+      }),
+    });
 
     // Default chainable mocks for User.findById and UserProjectMembership.findOne
     (User.findById as jest.Mock).mockReturnValue({
@@ -312,13 +316,19 @@ describe("Passkey Controller", () => {
         get: jest.fn(),
       };
 
-      (User.findOne as jest.Mock).mockResolvedValueOnce({
-        _id: "user123",
-        email: "test@example.com",
+      (User.findOne as jest.Mock).mockReturnValueOnce({
+        select: jest.fn().mockReturnValue({
+          lean: jest.fn().mockResolvedValue({
+            _id: { toString: () => "user123" },
+            email: "test@example.com",
+          }),
+        }),
       });
-      (PasskeyCredential.find as jest.Mock).mockResolvedValueOnce([
-        { credentialId: "cred-1", transports: ["internal"] },
-      ]);
+      (PasskeyCredential.find as jest.Mock).mockReturnValueOnce({
+        select: jest.fn().mockReturnValue({
+          lean: jest.fn().mockResolvedValue([{ credentialId: "cred-1", transports: ["internal"] }]),
+        }),
+      });
       simpleWebAuthn.generateAuthenticationOptions.mockResolvedValueOnce({
         challenge: "auth-challenge",
       });

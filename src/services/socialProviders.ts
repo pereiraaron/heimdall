@@ -87,13 +87,16 @@ const githubExchange = async (
     throw new Error("No access token returned from GitHub");
   }
 
-  // Fetch user profile
-  const userResponse = await fetch(GITHUB_USER_URL, {
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-      Accept: "application/json",
-    },
-  });
+  const authHeaders = {
+    Authorization: `Bearer ${accessToken}`,
+    Accept: "application/json",
+  };
+
+  // Fetch profile and emails in parallel — emails endpoint is needed when email is private
+  const [userResponse, emailsResponse] = await Promise.all([
+    fetch(GITHUB_USER_URL, { headers: authHeaders }),
+    fetch(GITHUB_EMAILS_URL, { headers: authHeaders }),
+  ]);
 
   if (!userResponse.ok) {
     throw new Error("Failed to fetch GitHub user profile");
@@ -101,23 +104,13 @@ const githubExchange = async (
 
   const userData = await userResponse.json();
 
-  // If email is private, fetch from emails endpoint
   let email = userData.email;
-  if (!email) {
-    const emailsResponse = await fetch(GITHUB_EMAILS_URL, {
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        Accept: "application/json",
-      },
-    });
-
-    if (emailsResponse.ok) {
-      const emails = await emailsResponse.json();
-      const primary = emails.find(
-        (e: { primary: boolean; verified: boolean; email: string }) => e.primary && e.verified
-      );
-      email = primary?.email;
-    }
+  if (!email && emailsResponse.ok) {
+    const emails = await emailsResponse.json();
+    const primary = emails.find(
+      (e: { primary: boolean; verified: boolean; email: string }) => e.primary && e.verified
+    );
+    email = primary?.email;
   }
 
   if (!email) {

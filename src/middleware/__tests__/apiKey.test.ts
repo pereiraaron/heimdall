@@ -1,5 +1,5 @@
 import { Response, NextFunction } from "express";
-import { validateApiKey } from "../apiKey";
+import { validateApiKey, clearApiKeyCache } from "../apiKey";
 import { Project } from "../../models";
 import { ApiKeyRequest } from "../../types";
 
@@ -22,6 +22,7 @@ describe("API Key Middleware", () => {
   let responseStatus: jest.Mock;
 
   beforeEach(() => {
+    clearApiKeyCache();
     responseJson = jest.fn().mockReturnThis();
     responseStatus = jest.fn().mockReturnValue({ json: responseJson });
 
@@ -77,6 +78,21 @@ describe("API Key Middleware", () => {
     expect(mockRequest.projectId).toBe("project-123");
     expect(mockNext).toHaveBeenCalled();
     expect(responseStatus).not.toHaveBeenCalled();
+  });
+
+  it("should serve subsequent lookups from cache", async () => {
+    mockRequest.headers = { "x-api-key": "hm_cached_key" };
+    const mockProject = {
+      _id: { toString: () => "project-456" },
+    };
+    (Project.findOne as jest.Mock).mockReturnValue(mockChain(mockProject));
+
+    await validateApiKey(mockRequest as ApiKeyRequest, mockResponse as Response, mockNext);
+    await validateApiKey(mockRequest as ApiKeyRequest, mockResponse as Response, mockNext);
+
+    expect(Project.findOne).toHaveBeenCalledTimes(1);
+    expect(mockRequest.projectId).toBe("project-456");
+    expect(mockNext).toHaveBeenCalledTimes(2);
   });
 
   it("should return 500 on database error", async () => {

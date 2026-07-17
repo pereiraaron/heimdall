@@ -74,12 +74,16 @@ export const login = async (req: ApiKeyRequest, res: Response) => {
       return;
     }
 
-    // Check membership for this project
-    const membership = await UserProjectMembership.findOne({
-      userId: user._id,
-      projectId,
-      status: MembershipStatus.Active,
-    });
+    // Membership + passkey nudge data in parallel (independent reads)
+    const [membership, project, hasPasskeys] = await Promise.all([
+      UserProjectMembership.findOne({
+        userId: user._id,
+        projectId,
+        status: MembershipStatus.Active,
+      }).lean(),
+      Project.findById(projectId).select("passkeyPolicy").lean(),
+      PasskeyCredential.exists({ userId: user._id }),
+    ]);
 
     if (!membership) {
       res.status(403).json({ message: "Access denied. No active membership for this project." });
@@ -94,12 +98,7 @@ export const login = async (req: ApiKeyRequest, res: Response) => {
       membership._id.toString()
     );
 
-    // Check if passkey setup should be nudged
     let passkeySetupRequired: boolean | undefined;
-    const [project, hasPasskeys] = await Promise.all([
-      Project.findById(projectId).lean(),
-      PasskeyCredential.exists({ userId: user._id }),
-    ]);
     if (project?.passkeyPolicy === "encouraged") {
       const optedOut = membership.metadata?.preferences?.passkeyOptedOut === true;
       if (!hasPasskeys && !optedOut) {

@@ -1,6 +1,12 @@
 import { Response } from "express";
 import { login, register, refresh, logout } from "../auth";
-import { User, UserProjectMembership, RefreshToken, Project } from "../../models";
+import {
+  User,
+  UserProjectMembership,
+  RefreshToken,
+  Project,
+  PasskeyCredential,
+} from "../../models";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import { ApiKeyRequest, AuthRequest, MembershipRole, MembershipStatus } from "../../types";
@@ -129,7 +135,14 @@ describe("Auth Controller", () => {
         }),
       });
       (bcrypt.compare as jest.Mock).mockResolvedValueOnce(true);
-      (UserProjectMembership.findOne as jest.Mock).mockResolvedValueOnce(null);
+      (UserProjectMembership.findOne as jest.Mock).mockReturnValueOnce({
+        lean: jest.fn().mockResolvedValueOnce(null),
+      });
+      (Project.findById as jest.Mock).mockReturnValueOnce({
+        select: jest.fn().mockReturnValue({
+          lean: jest.fn().mockResolvedValue({ passkeyPolicy: "optional" }),
+        }),
+      });
 
       await login(mockRequest as ApiKeyRequest, mockResponse as Response);
 
@@ -154,12 +167,17 @@ describe("Auth Controller", () => {
         select: jest.fn().mockResolvedValueOnce(mockUser),
       });
       (bcrypt.compare as jest.Mock).mockResolvedValueOnce(true);
-      (UserProjectMembership.findOne as jest.Mock).mockResolvedValueOnce(mockMembership);
+      (UserProjectMembership.findOne as jest.Mock).mockReturnValueOnce({
+        lean: jest.fn().mockResolvedValueOnce(mockMembership),
+      });
       (jwt.sign as jest.Mock).mockReturnValueOnce("test-access-token");
       (RefreshToken.create as jest.Mock).mockResolvedValueOnce({});
       (Project.findById as jest.Mock).mockReturnValueOnce({
-        lean: jest.fn().mockResolvedValue({ passkeyPolicy: "optional" }),
+        select: jest.fn().mockReturnValue({
+          lean: jest.fn().mockResolvedValue({ passkeyPolicy: "optional" }),
+        }),
       });
+      (PasskeyCredential.exists as jest.Mock).mockResolvedValueOnce(null);
 
       await login(mockRequest as ApiKeyRequest, mockResponse as Response);
 

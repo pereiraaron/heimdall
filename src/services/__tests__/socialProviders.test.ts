@@ -122,6 +122,10 @@ describe("socialProviders", () => {
             name: "GH User",
             login: "ghuser",
           }),
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          json: jest.fn().mockResolvedValue([]),
         });
 
       const result = await exchangeCodeForProfile(
@@ -136,6 +140,18 @@ describe("socialProviders", () => {
         email: "user@github.com",
         displayName: "GH User",
       });
+      expect(mockFetch).toHaveBeenCalledWith(
+        "https://api.github.com/user",
+        expect.objectContaining({
+          headers: expect.objectContaining({ Authorization: "Bearer gh-token" }),
+        })
+      );
+      expect(mockFetch).toHaveBeenCalledWith(
+        "https://api.github.com/user/emails",
+        expect.objectContaining({
+          headers: expect.objectContaining({ Authorization: "Bearer gh-token" }),
+        })
+      );
     });
 
     it("should fetch email from emails endpoint if email is private", async () => {
@@ -229,6 +245,25 @@ describe("socialProviders", () => {
           mockConfig
         )
       ).rejects.toThrow("Could not retrieve email from GitHub");
+    });
+
+    it("should throw if user profile fetch fails", async () => {
+      mockFetch
+        .mockResolvedValueOnce({
+          ok: true,
+          json: jest.fn().mockResolvedValue({ access_token: "gh-token" }),
+        })
+        .mockResolvedValueOnce({ ok: false })
+        .mockResolvedValueOnce({ ok: true, json: jest.fn().mockResolvedValue([]) });
+
+      await expect(
+        exchangeCodeForProfile(
+          SocialProvider.GitHub,
+          "auth-code",
+          "http://localhost/callback",
+          mockConfig
+        )
+      ).rejects.toThrow("Failed to fetch GitHub user profile");
     });
   });
 

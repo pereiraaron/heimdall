@@ -14,14 +14,40 @@ import {
 } from "../models";
 import { createTokenPair } from "./auth";
 import { AuthRequest, ApiKeyRequest, MembershipStatus } from "../types";
+import { createTtlCache } from "../utils/ttlCache";
 
 const DEFAULT_RP_ID = process.env.WEBAUTHN_RP_ID || "localhost";
 const DEFAULT_RP_NAME = process.env.WEBAUTHN_RP_NAME || "Heimdall";
 const DEFAULT_ORIGIN = process.env.WEBAUTHN_ORIGIN || "http://localhost:3000";
 const CHALLENGE_TTL_SECONDS = 60;
+const PROJECT_CACHE_TTL_MS = 5 * 60 * 1000;
+
+type CachedProjectFields = {
+  name?: string;
+  webauthnRpIds?: string[];
+  webauthnOrigins?: string[];
+};
+
+const projectConfigCache = createTtlCache<CachedProjectFields>(PROJECT_CACHE_TTL_MS);
+
+const getProjectConfig = async (projectId: string): Promise<CachedProjectFields> => {
+  const cached = projectConfigCache.get(projectId);
+  if (cached) return cached;
+
+  const project = await Project.findById(projectId)
+    .select("name webauthnRpIds webauthnOrigins")
+    .lean();
+  const fields: CachedProjectFields = {
+    name: project?.name,
+    webauthnRpIds: project?.webauthnRpIds,
+    webauthnOrigins: project?.webauthnOrigins,
+  };
+  projectConfigCache.set(projectId, fields);
+  return fields;
+};
 
 const getWebAuthnConfig = async (projectId: string, requestOrigin?: string) => {
-  const project = await Project.findById(projectId);
+  const project = await getProjectConfig(projectId);
   const rpName = project?.name || DEFAULT_RP_NAME;
 
   const rpIds = project?.webauthnRpIds?.length ? project.webauthnRpIds : [DEFAULT_RP_ID];
@@ -111,12 +137,13 @@ export const verifyRegistration = async (req: AuthRequest, res: Response) => {
   }
 
   try {
-    const { expectedRpIds, origins } = await getWebAuthnConfig(req.user!.projectId);
-
-    const challenge = await WebAuthnChallenge.findOneAndDelete({
-      _id: challengeId,
-      userId: req.user!.id,
-    });
+    const [{ expectedRpIds, origins }, challenge] = await Promise.all([
+      getWebAuthnConfig(req.user!.projectId),
+      WebAuthnChallenge.findOneAndDelete({
+        _id: challengeId,
+        userId: req.user!.id,
+      }),
+    ]);
 
     if (!challenge) {
       res.status(400).json({ message: "Challenge not found or expired" });
@@ -169,21 +196,25 @@ export const verifyRegistration = async (req: AuthRequest, res: Response) => {
 export const generateAuthenticationOptions = async (req: ApiKeyRequest, res: Response) => {
   try {
     const requestOrigin = req.get("origin");
-    const { rpId } = await getWebAuthnConfig(req.projectId!, requestOrigin);
     const { email } = req.body || {};
+
+    const [{ rpId }, user] = await Promise.all([
+      getWebAuthnConfig(req.projectId!, requestOrigin),
+      email ? User.findOne({ email }).select("_id").lean() : Promise.resolve(null),
+    ]);
+
     let allowCredentials: { id: string; transports?: AuthenticatorTransport[] }[] | undefined;
     let userId: string | undefined;
 
-    if (email) {
-      const user = await User.findOne({ email });
-      if (user) {
-        userId = user._id.toString();
-        const credentials = await PasskeyCredential.find({ userId: user._id });
-        allowCredentials = credentials.map((cred) => ({
-          id: cred.credentialId,
-          transports: cred.transports as AuthenticatorTransport[],
-        }));
-      }
+    if (user) {
+      userId = user._id.toString();
+      const credentials = await PasskeyCredential.find({ userId: user._id })
+        .select("credentialId transports")
+        .lean();
+      allowCredentials = credentials.map((cred) => ({
+        id: cred.credentialId,
+        transports: cred.transports as AuthenticatorTransport[],
+      }));
     }
 
     const options = await generateAuthOptions({
@@ -217,19 +248,18 @@ export const verifyAuthentication = async (req: ApiKeyRequest, res: Response) =>
   }
 
   try {
-    const { expectedRpIds, origins } = await getWebAuthnConfig(projectId);
+    const credentialId = credential.id;
 
-    const challenge = await WebAuthnChallenge.findOneAndDelete({
-      _id: challengeId,
-    });
+    const [{ expectedRpIds, origins }, challenge, storedCredential] = await Promise.all([
+      getWebAuthnConfig(projectId),
+      WebAuthnChallenge.findOneAndDelete({ _id: challengeId }),
+      PasskeyCredential.findOne({ credentialId }),
+    ]);
 
     if (!challenge) {
       res.status(400).json({ message: "Challenge not found or expired" });
       return;
     }
-
-    const credentialId = credential.id;
-    const storedCredential = await PasskeyCredential.findOne({ credentialId });
 
     if (!storedCredential) {
       res.status(401).json({ message: "Passkey not recognized" });
