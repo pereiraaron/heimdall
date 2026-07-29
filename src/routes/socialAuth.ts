@@ -18,7 +18,7 @@ const socialAuthLimiter = rateLimit({
   legacyHeaders: false,
 });
 
-router.post("/login", validateApiKey, socialAuthLimiter, socialLogin);
+router.post("/login", socialAuthLimiter, validateApiKey, socialLogin);
 router.post("/link", authenticate, linkSocialAccount);
 router.delete("/unlink/:provider", authenticate, unlinkSocialAccount);
 router.get("/accounts", authenticate, listSocialAccounts);

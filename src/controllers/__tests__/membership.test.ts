@@ -43,8 +43,23 @@ jest.mock("../../models", () => ({
     create: jest.fn(),
     deleteOne: jest.fn(),
     populate: jest.fn(),
+    countDocuments: jest.fn(),
   },
 }));
+
+/** Mirrors the .select().populate().sort().skip().limit().lean() query chain. */
+const buildFindChain = (lean: jest.Mock) => {
+  const chain: Record<string, jest.Mock> = {};
+  for (const method of ["select", "populate", "sort", "skip", "limit"]) {
+    chain[method] = jest.fn(() => chain);
+  }
+  chain.lean = lean;
+  return chain;
+};
+
+const mockFindChain = (value: unknown) => buildFindChain(jest.fn().mockResolvedValue(value));
+
+const mockFindChainRejecting = (error: Error) => buildFindChain(jest.fn().mockRejectedValue(error));
 
 describe("Membership Controller", () => {
   let mockRequest: Partial<AuthRequest>;
@@ -79,11 +94,8 @@ describe("Membership Controller", () => {
   describe("getProjectMembers", () => {
     it("should return 200 with members list", async () => {
       const mockMembers = [{ userId: "u1", role: MembershipRole.Member }];
-      (UserProjectMembership.find as jest.Mock).mockReturnValue({
-        populate: jest.fn().mockReturnValue({
-          lean: jest.fn().mockResolvedValue(mockMembers),
-        }),
-      });
+      (UserProjectMembership.find as jest.Mock).mockReturnValue(mockFindChain(mockMembers));
+      (UserProjectMembership.countDocuments as jest.Mock).mockResolvedValue(1);
 
       await getProjectMembers(mockRequest as AuthRequest, mockResponse as Response);
 
@@ -92,15 +104,31 @@ describe("Membership Controller", () => {
         status: { $in: [MembershipStatus.Active, MembershipStatus.Pending] },
       });
       expect(responseStatus).toHaveBeenCalledWith(200);
-      expect(responseJson).toHaveBeenCalledWith(mockMembers);
+      expect(responseJson).toHaveBeenCalledWith({
+        members: mockMembers,
+        page: 1,
+        limit: 50,
+        total: 1,
+      });
+    });
+
+    it("should apply page and limit from the query string", async () => {
+      const chain = mockFindChain([]);
+      (UserProjectMembership.find as jest.Mock).mockReturnValue(chain);
+      (UserProjectMembership.countDocuments as jest.Mock).mockResolvedValue(0);
+      mockRequest.query = { page: "2", limit: "25" };
+
+      await getProjectMembers(mockRequest as AuthRequest, mockResponse as Response);
+
+      expect(chain.skip).toHaveBeenCalledWith(25);
+      expect(chain.limit).toHaveBeenCalledWith(25);
     });
 
     it("should return 500 on error", async () => {
-      (UserProjectMembership.find as jest.Mock).mockReturnValue({
-        populate: jest.fn().mockReturnValue({
-          lean: jest.fn().mockRejectedValue(new Error("DB error")),
-        }),
-      });
+      (UserProjectMembership.countDocuments as jest.Mock).mockResolvedValue(0);
+      (UserProjectMembership.find as jest.Mock).mockReturnValue(
+        mockFindChainRejecting(new Error("DB error"))
+      );
 
       await getProjectMembers(mockRequest as AuthRequest, mockResponse as Response);
 

@@ -1,7 +1,7 @@
-import express, { Express } from "express";
+import express, { Express, NextFunction, Request, Response } from "express";
 import cors from "cors";
+import compression from "compression";
 import dotenv from "dotenv";
-import swaggerDocument from "./swagger.json";
 import { connectToDB } from "./db/connect";
 import authRoutes from "./routes/auth";
 import userRoutes from "./routes/user";
@@ -19,10 +19,18 @@ const app: Express = express();
 const PORT = process.env.PORT || 7001;
 
 app.use(cors());
+app.use(compression());
 app.use(express.json());
 
-// Swagger docs
-app.get("/api/docs/spec.json", (_, res) => {
+// Health check — must not depend on the database
+app.get("/", (_, res) => {
+  res.status(200).json({ message: "Heimdall is guarding your API!" });
+});
+
+// Swagger docs. The 44KB spec is loaded on demand so cold starts don't pay to
+// parse it for a route almost nobody hits.
+app.get("/api/docs/spec.json", async (_, res) => {
+  const { default: swaggerDocument } = await import("./swagger.json");
   res.status(200).json(swaggerDocument);
 });
 app.get("/api/docs", (_, res) => {
@@ -37,6 +45,17 @@ app.get("/api/docs", (_, res) => {
 </body></html>`);
 });
 
+// Gate the data routes on a live connection rather than relying on Mongoose's
+// command buffering, so a cold start that can't reach Mongo fails fast.
+app.use(async (_req: Request, res: Response, next: NextFunction) => {
+  try {
+    await connectToDB();
+    next();
+  } catch {
+    res.status(503).json({ message: "Service unavailable" });
+  }
+});
+
 // Routes
 app.use("/api/auth", authRoutes);
 app.use("/api/users", userRoutes);
@@ -44,13 +63,15 @@ app.use("/api/memberships", membershipRoutes);
 app.use("/api/auth/passkey", passkeyRoutes);
 app.use("/api/auth/social", socialAuthRoutes);
 
-// Health check route
-app.get("/", (_, res) => {
-  res.status(200).json({ message: "Heimdall is guarding your API!" });
-});
-
 const start = async () => {
-  await connectToDB();
+  try {
+    await connectToDB();
+  } catch {
+    // A long-running server should fail fast; a serverless instance should
+    // stay up and retry the connection on the next request.
+    if (!process.env.VERCEL) process.exit(1);
+    return;
+  }
 
   // Only skip listening on Vercel (serverless)
   if (!process.env.VERCEL) {

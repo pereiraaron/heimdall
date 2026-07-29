@@ -6,23 +6,30 @@ import { MembershipRole, MembershipStatus } from "../types";
  * that they don't already belong to.
  */
 export const grantAllProjectsAccess = async (userId: string) => {
-  const [allProjects, existingMemberships] = await Promise.all([
-    Project.find({}, "_id").lean(),
-    UserProjectMembership.find({ userId }, "projectId").lean(),
-  ]);
-  const existingProjectIds = new Set(existingMemberships.map((m) => m.projectId.toString()));
+  const allProjects = await Project.find({}, "_id").lean();
+  if (allProjects.length === 0) return;
 
-  const newMemberships = allProjects
-    .filter((p) => !existingProjectIds.has(p._id.toString()))
-    .map((p) => ({
-      userId,
-      projectId: p._id,
-      role: MembershipRole.Member,
-      status: MembershipStatus.Active,
-      joinedAt: new Date(),
-    }));
+  const now = new Date();
 
-  if (newMemberships.length > 0) {
-    await UserProjectMembership.insertMany(newMemberships);
-  }
+  // Upserts against the unique {userId, projectId} index: one round trip, and
+  // no read of existing memberships. $setOnInsert leaves existing rows untouched.
+  await UserProjectMembership.bulkWrite(
+    allProjects.map((project) => ({
+      updateOne: {
+        filter: { userId, projectId: project._id },
+        update: {
+          $setOnInsert: {
+            role: MembershipRole.Member,
+            status: MembershipStatus.Active,
+            joinedAt: now,
+            createdAt: now,
+            updatedAt: now,
+          },
+        },
+        upsert: true,
+      },
+    })),
+    // Timestamps are set explicitly above so existing rows don't get bumped.
+    { ordered: false, timestamps: false }
+  );
 };

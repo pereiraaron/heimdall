@@ -2,18 +2,26 @@ import { Response } from "express";
 import { User, UserProjectMembership } from "../models";
 import { AuthRequest, MembershipStatus } from "../types";
 import { cleanupOrphanedUser } from "../services/cleanupUserData";
+import { parsePagination } from "../utils/pagination";
 
 export const getAllUsers = async (req: AuthRequest, res: Response) => {
   try {
     const projectId = req.user?.projectId;
+    const { page, limit, skip } = parsePagination(req.query);
 
-    // Get all active memberships for this project with user details
-    const memberships = await UserProjectMembership.find({
-      projectId,
-      status: MembershipStatus.Active,
-    })
-      .populate("userId", "email username createdAt updatedAt")
-      .lean();
+    const filter = { projectId, status: MembershipStatus.Active };
+
+    // A page of active memberships for this project, with user details
+    const [memberships, total] = await Promise.all([
+      UserProjectMembership.find(filter)
+        .select("userId role joinedAt")
+        .populate("userId", "email username createdAt updatedAt")
+        .sort({ _id: 1 })
+        .skip(skip)
+        .limit(limit)
+        .lean(),
+      UserProjectMembership.countDocuments(filter),
+    ]);
 
     // Transform to user-centric response with membership info
     const users = memberships.map((m) => ({
@@ -23,7 +31,7 @@ export const getAllUsers = async (req: AuthRequest, res: Response) => {
       joinedAt: m.joinedAt,
     }));
 
-    res.status(200).json(users);
+    res.status(200).json({ users, page, limit, total });
   } catch (error) {
     res.status(500).json({ message: "Error fetching users" });
   }

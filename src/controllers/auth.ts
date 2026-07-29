@@ -1,11 +1,12 @@
 import { Response } from "express";
 import crypto from "crypto";
-import { User, UserProjectMembership, RefreshToken, PasskeyCredential, Project } from "../models";
+import { User, UserProjectMembership, RefreshToken, PasskeyCredential } from "../models";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import { ApiKeyRequest, AuthRequest, MembershipRole, MembershipStatus } from "../types";
 import { GRANT_ACCESS_TO_ALL_PROJECTS } from "../config/flags";
 import { grantAllProjectsAccess } from "../services/grantAllProjectsAccess";
+import { getProjectById } from "../services/projectConfig";
 
 const ACCESS_TOKEN_EXPIRY = "24h";
 const REFRESH_TOKEN_EXPIRY_DAYS = 14;
@@ -57,7 +58,7 @@ export const login = async (req: ApiKeyRequest, res: Response) => {
   const projectId = req.projectId!;
 
   try {
-    const user = await User.findOne({ email }).select("+password");
+    const user = await User.findOne({ email }).select("+password email username").lean();
     if (!user) {
       res.status(401).json({ message: "Invalid credentials" });
       return;
@@ -74,15 +75,18 @@ export const login = async (req: ApiKeyRequest, res: Response) => {
       return;
     }
 
-    // Membership + passkey nudge data in parallel (independent reads)
-    const [membership, project, hasPasskeys] = await Promise.all([
+    // Project config is already cached by validateApiKey — no DB read on the hot path.
+    const project = req.project ?? (await getProjectById(projectId));
+    const passkeyNudgeEnabled = project?.passkeyPolicy === "encouraged";
+
+    // The passkey lookup only matters when the project nudges enrollment.
+    const [membership, hasPasskeys] = await Promise.all([
       UserProjectMembership.findOne({
         userId: user._id,
         projectId,
         status: MembershipStatus.Active,
       }).lean(),
-      Project.findById(projectId).select("passkeyPolicy").lean(),
-      PasskeyCredential.exists({ userId: user._id }),
+      passkeyNudgeEnabled ? PasskeyCredential.exists({ userId: user._id }) : Promise.resolve(null),
     ]);
 
     if (!membership) {
@@ -99,7 +103,7 @@ export const login = async (req: ApiKeyRequest, res: Response) => {
     );
 
     let passkeySetupRequired: boolean | undefined;
-    if (project?.passkeyPolicy === "encouraged") {
+    if (passkeyNudgeEnabled) {
       const optedOut = membership.metadata?.preferences?.passkeyOptedOut === true;
       if (!hasPasskeys && !optedOut) {
         passkeySetupRequired = true;
@@ -135,11 +139,13 @@ export const refresh = async (req: ApiKeyRequest, res: Response) => {
   try {
     const tokenHash = hashToken(refreshToken);
 
-    const storedToken = await RefreshToken.findOne({
-      token: tokenHash,
-      projectId,
-      isRevoked: false,
-    });
+    // Claim-and-revoke in one atomic op: a single round trip, and concurrent
+    // replays of the same token lose the race instead of both succeeding.
+    const storedToken = await RefreshToken.findOneAndUpdate(
+      { token: tokenHash, projectId, isRevoked: false },
+      { isRevoked: true },
+      { new: false }
+    ).lean();
 
     if (!storedToken) {
       res.status(401).json({ message: "Invalid refresh token" });
@@ -151,10 +157,7 @@ export const refresh = async (req: ApiKeyRequest, res: Response) => {
       return;
     }
 
-    // Revoke old refresh token (rotation) and verify user/membership in parallel
-    storedToken.isRevoked = true;
-    const [, membership, user] = await Promise.all([
-      storedToken.save(),
+    const [membership, user] = await Promise.all([
       UserProjectMembership.findOne({
         _id: storedToken.membershipId,
         status: MembershipStatus.Active,
@@ -233,12 +236,13 @@ export const register = async (req: ApiKeyRequest, res: Response) => {
   const projectId = req.projectId!;
 
   try {
-    let user = await User.findOne({ email }).select("+password");
+    const existingUser = await User.findOne({ email }).select("+password").lean();
+    let userId: string;
 
-    if (user) {
+    if (existingUser) {
       // Check if user already has membership for this project
       const existingMembership = await UserProjectMembership.findOne({
-        userId: user._id,
+        userId: existingUser._id,
         projectId,
       });
 
@@ -248,11 +252,11 @@ export const register = async (req: ApiKeyRequest, res: Response) => {
           return;
         }
         // Reactivate suspended/pending membership
-        if (!user.password) {
+        if (!existingUser.password) {
           res.status(401).json({ message: "Invalid credentials" });
           return;
         }
-        const isPasswordValid = await bcrypt.compare(password, user.password);
+        const isPasswordValid = await bcrypt.compare(password, existingUser.password);
         if (!isPasswordValid) {
           res.status(401).json({ message: "Invalid credentials" });
           return;
@@ -265,24 +269,27 @@ export const register = async (req: ApiKeyRequest, res: Response) => {
       }
 
       // Validate password for existing user joining new project
-      if (!user.password) {
+      if (!existingUser.password) {
         res.status(401).json({ message: "Invalid credentials" });
         return;
       }
-      const isPasswordValid = await bcrypt.compare(password, user.password);
+      const isPasswordValid = await bcrypt.compare(password, existingUser.password);
       if (!isPasswordValid) {
         res.status(401).json({ message: "Invalid credentials" });
         return;
       }
+
+      userId = existingUser._id.toString();
     } else {
       // Create new user
       const hashedPassword = await bcrypt.hash(password, 10);
-      user = await User.create({ email, password: hashedPassword });
+      const createdUser = await User.create({ email, password: hashedPassword });
+      userId = createdUser._id.toString();
     }
 
     // Create membership for the project
     await UserProjectMembership.create({
-      userId: user._id,
+      userId,
       projectId,
       role: MembershipRole.Member,
       status: MembershipStatus.Active,
@@ -290,7 +297,7 @@ export const register = async (req: ApiKeyRequest, res: Response) => {
     });
 
     if (GRANT_ACCESS_TO_ALL_PROJECTS) {
-      await grantAllProjectsAccess(user._id.toString());
+      await grantAllProjectsAccess(userId);
     }
 
     res.status(201).json({ message: `User registered with email ${email}` });

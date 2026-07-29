@@ -33,10 +33,11 @@ describe("Database Connection", () => {
   });
 
   const expectedOptions = {
-    maxPoolSize: 10,
+    maxPoolSize: 5,
     minPoolSize: 1,
     serverSelectionTimeoutMS: 5000,
     socketTimeoutMS: 45000,
+    autoIndex: false,
   };
 
   it("should connect to MongoDB successfully", async () => {
@@ -60,17 +61,27 @@ describe("Database Connection", () => {
     expect(mongoose.connect).not.toHaveBeenCalled();
   });
 
-  it("should log error and exit process on connection failure", async () => {
+  it("should log and rethrow on connection failure so the caller can decide", async () => {
     const testError = new Error("Connection error");
     (mongoose.connect as jest.Mock).mockRejectedValueOnce(testError);
 
-    await connectToDB();
+    await expect(connectToDB()).rejects.toThrow("Connection error");
 
     expect(mongoose.connect).toHaveBeenCalledWith(
       "mongodb://test-connection-string",
       expectedOptions
     );
     expect(console.error).toHaveBeenCalledWith("🔴 MongoDB connection error:", testError);
-    expect(process.exit).toHaveBeenCalledWith(1);
+    expect(process.exit).not.toHaveBeenCalled();
+  });
+
+  it("should allow a retry after a failed connection", async () => {
+    (mongoose.connect as jest.Mock).mockRejectedValueOnce(new Error("Connection error"));
+    await expect(connectToDB()).rejects.toThrow("Connection error");
+
+    (mongoose.connect as jest.Mock).mockResolvedValueOnce(undefined);
+    await expect(connectToDB()).resolves.toBeUndefined();
+
+    expect(mongoose.connect).toHaveBeenCalledTimes(2);
   });
 });

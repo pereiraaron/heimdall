@@ -1,5 +1,5 @@
 import { Response } from "express";
-import { User, UserProjectMembership, Project, SocialAccount } from "../models";
+import { User, UserProjectMembership, SocialAccount } from "../models";
 import {
   ApiKeyRequest,
   AuthRequest,
@@ -7,16 +7,18 @@ import {
   MembershipRole,
   MembershipStatus,
   ISocialProviderConfig,
+  ProjectConfig,
 } from "../types";
 import { createTokenPair } from "./auth";
 import { exchangeCodeForProfile } from "../services/socialProviders";
 import { GRANT_ACCESS_TO_ALL_PROJECTS } from "../config/flags";
 import { grantAllProjectsAccess } from "../services/grantAllProjectsAccess";
+import { getProjectById } from "../services/projectConfig";
 
 const VALID_PROVIDERS = Object.values(SocialProvider) as string[];
 
 const getProviderConfig = (
-  project: InstanceType<typeof Project>,
+  project: ProjectConfig,
   provider: SocialProvider
 ): ISocialProviderConfig | null => {
   const config = project.socialProviders?.[provider];
@@ -41,7 +43,8 @@ export const socialLogin = async (req: ApiKeyRequest, res: Response) => {
   }
 
   try {
-    const project = await Project.findById(projectId);
+    // Already cached by validateApiKey — no project read on this path.
+    const project = req.project ?? (await getProjectById(projectId));
     if (!project) {
       res.status(404).json({ message: "Project not found" });
       return;
@@ -213,7 +216,7 @@ export const linkSocialAccount = async (req: AuthRequest, res: Response) => {
   }
 
   try {
-    const project = await Project.findById(projectId);
+    const project = await getProjectById(projectId);
     if (!project) {
       res.status(404).json({ message: "Project not found" });
       return;
@@ -293,7 +296,7 @@ export const unlinkSocialAccount = async (req: AuthRequest, res: Response) => {
     }
 
     const deleted = await SocialAccount.findOneAndDelete({
-      provider,
+      provider: provider as SocialProvider,
       userId,
     });
 

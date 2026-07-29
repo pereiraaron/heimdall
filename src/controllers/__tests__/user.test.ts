@@ -27,8 +27,23 @@ jest.mock("../../models", () => ({
     findOneAndDelete: jest.fn(),
     countDocuments: jest.fn(),
     populate: jest.fn(),
+    exists: jest.fn(),
   },
 }));
+
+/** Mirrors the .select().populate().sort().skip().limit().lean() query chain. */
+const buildFindChain = (lean: jest.Mock) => {
+  const chain: Record<string, jest.Mock> = {};
+  for (const method of ["select", "populate", "sort", "skip", "limit"]) {
+    chain[method] = jest.fn(() => chain);
+  }
+  chain.lean = lean;
+  return chain;
+};
+
+const mockFindChain = (value: unknown) => buildFindChain(jest.fn().mockResolvedValue(value));
+
+const mockFindChainRejecting = (error: Error) => buildFindChain(jest.fn().mockRejectedValue(error));
 
 describe("User Controller", () => {
   let mockRequest: Partial<AuthRequest>;
@@ -92,11 +107,8 @@ describe("User Controller", () => {
         },
       ];
 
-      (UserProjectMembership.find as jest.Mock).mockReturnValue({
-        populate: jest.fn().mockReturnValue({
-          lean: jest.fn().mockResolvedValue(mockMemberships),
-        }),
-      });
+      (UserProjectMembership.find as jest.Mock).mockReturnValue(mockFindChain(mockMemberships));
+      (UserProjectMembership.countDocuments as jest.Mock).mockResolvedValue(2);
 
       await getAllUsers(mockRequest as AuthRequest, mockResponse as Response);
 
@@ -105,15 +117,38 @@ describe("User Controller", () => {
         status: MembershipStatus.Active,
       });
       expect(responseStatus).toHaveBeenCalledWith(200);
+      expect(responseJson).toHaveBeenCalledWith(
+        expect.objectContaining({ page: 1, limit: 50, total: 2 })
+      );
+    });
+
+    it("should apply page and limit from the query string", async () => {
+      const chain = mockFindChain([]);
+      (UserProjectMembership.find as jest.Mock).mockReturnValue(chain);
+      (UserProjectMembership.countDocuments as jest.Mock).mockResolvedValue(0);
+      mockRequest.query = { page: "3", limit: "10" };
+
+      await getAllUsers(mockRequest as AuthRequest, mockResponse as Response);
+
+      expect(chain.skip).toHaveBeenCalledWith(20);
+      expect(chain.limit).toHaveBeenCalledWith(10);
+    });
+
+    it("should clamp an oversized limit to the maximum page size", async () => {
+      const chain = mockFindChain([]);
+      (UserProjectMembership.find as jest.Mock).mockReturnValue(chain);
+      (UserProjectMembership.countDocuments as jest.Mock).mockResolvedValue(0);
+      mockRequest.query = { limit: "100000" };
+
+      await getAllUsers(mockRequest as AuthRequest, mockResponse as Response);
+
+      expect(chain.limit).toHaveBeenCalledWith(200);
     });
 
     it("should handle errors and return status 500", async () => {
       const error = new Error("Database error");
-      (UserProjectMembership.find as jest.Mock).mockReturnValue({
-        populate: jest.fn().mockReturnValue({
-          lean: jest.fn().mockRejectedValue(error),
-        }),
-      });
+      (UserProjectMembership.countDocuments as jest.Mock).mockResolvedValue(0);
+      (UserProjectMembership.find as jest.Mock).mockReturnValue(mockFindChainRejecting(error));
 
       await getAllUsers(mockRequest as AuthRequest, mockResponse as Response);
 

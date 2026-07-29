@@ -5,7 +5,8 @@ import {
   unlinkSocialAccount,
   listSocialAccounts,
 } from "../socialAuth";
-import { User, UserProjectMembership, Project, SocialAccount, RefreshToken } from "../../models";
+import { User, UserProjectMembership, SocialAccount, RefreshToken } from "../../models";
+import { getProjectById } from "../../services/projectConfig";
 import { ApiKeyRequest, AuthRequest, MembershipRole, MembershipStatus } from "../../types";
 
 jest.mock("../../config/flags", () => ({
@@ -14,6 +15,10 @@ jest.mock("../../config/flags", () => ({
 
 jest.mock("../../services/grantAllProjectsAccess", () => ({
   grantAllProjectsAccess: jest.fn().mockResolvedValue(undefined),
+}));
+
+jest.mock("../../services/projectConfig", () => ({
+  getProjectById: jest.fn(),
 }));
 
 jest.mock("../../services/socialProviders", () => ({
@@ -34,9 +39,6 @@ jest.mock("../../models", () => ({
   UserProjectMembership: {
     findOne: jest.fn(),
     create: jest.fn(),
-  },
-  Project: {
-    findById: jest.fn(),
   },
   SocialAccount: {
     findOne: jest.fn(),
@@ -104,7 +106,7 @@ describe("Social Auth Controller", () => {
     });
 
     it("should return 404 if project not found", async () => {
-      (Project.findById as jest.Mock).mockResolvedValue(null);
+      (getProjectById as jest.Mock).mockResolvedValue(null);
 
       await socialLogin(mockRequest as ApiKeyRequest, mockResponse as Response);
 
@@ -113,7 +115,7 @@ describe("Social Auth Controller", () => {
     });
 
     it("should return 400 if provider is not enabled for project", async () => {
-      (Project.findById as jest.Mock).mockResolvedValue({
+      (getProjectById as jest.Mock).mockResolvedValue({
         socialProviders: {
           google: { enabled: false, clientId: "", clientSecret: "" },
         },
@@ -128,7 +130,7 @@ describe("Social Auth Controller", () => {
     });
 
     it("should login returning user with existing social account", async () => {
-      (Project.findById as jest.Mock).mockResolvedValue({
+      (getProjectById as jest.Mock).mockResolvedValue({
         socialProviders: {
           google: { enabled: true, clientId: "id", clientSecret: "secret" },
         },
@@ -163,7 +165,7 @@ describe("Social Auth Controller", () => {
     });
 
     it("should return 401 if returning user is disabled", async () => {
-      (Project.findById as jest.Mock).mockResolvedValue({
+      (getProjectById as jest.Mock).mockResolvedValue({
         socialProviders: {
           google: { enabled: true, clientId: "id", clientSecret: "secret" },
         },
@@ -190,7 +192,7 @@ describe("Social Auth Controller", () => {
     });
 
     it("should return 403 if returning user has no active membership", async () => {
-      (Project.findById as jest.Mock).mockResolvedValue({
+      (getProjectById as jest.Mock).mockResolvedValue({
         socialProviders: {
           google: { enabled: true, clientId: "id", clientSecret: "secret" },
         },
@@ -216,7 +218,7 @@ describe("Social Auth Controller", () => {
     });
 
     it("should create new user and membership for unknown email", async () => {
-      (Project.findById as jest.Mock).mockResolvedValue({
+      (getProjectById as jest.Mock).mockResolvedValue({
         socialProviders: {
           google: { enabled: true, clientId: "id", clientSecret: "secret" },
         },
@@ -247,7 +249,7 @@ describe("Social Auth Controller", () => {
     });
 
     it("should return 500 on error", async () => {
-      (Project.findById as jest.Mock).mockRejectedValue(new Error("DB error"));
+      (getProjectById as jest.Mock).mockRejectedValue(new Error("DB error"));
 
       await socialLogin(mockRequest as ApiKeyRequest, mockResponse as Response);
 
@@ -293,7 +295,7 @@ describe("Social Auth Controller", () => {
     });
 
     it("should return 404 if project not found", async () => {
-      (Project.findById as jest.Mock).mockResolvedValue(null);
+      (getProjectById as jest.Mock).mockResolvedValue(null);
 
       await linkSocialAccount(mockRequest as AuthRequest, mockResponse as Response);
 
@@ -301,7 +303,7 @@ describe("Social Auth Controller", () => {
     });
 
     it("should return 409 if provider already linked to user", async () => {
-      (Project.findById as jest.Mock).mockResolvedValue({
+      (getProjectById as jest.Mock).mockResolvedValue({
         socialProviders: {
           github: { enabled: true, clientId: "id", clientSecret: "secret" },
         },
@@ -317,7 +319,7 @@ describe("Social Auth Controller", () => {
     });
 
     it("should return 409 if provider account linked to another user", async () => {
-      (Project.findById as jest.Mock).mockResolvedValue({
+      (getProjectById as jest.Mock).mockResolvedValue({
         socialProviders: {
           github: { enabled: true, clientId: "id", clientSecret: "secret" },
         },
@@ -335,7 +337,7 @@ describe("Social Auth Controller", () => {
     });
 
     it("should return 201 on successful link", async () => {
-      (Project.findById as jest.Mock).mockResolvedValue({
+      (getProjectById as jest.Mock).mockResolvedValue({
         socialProviders: {
           github: { enabled: true, clientId: "id", clientSecret: "secret" },
         },
@@ -350,7 +352,7 @@ describe("Social Auth Controller", () => {
     });
 
     it("should return 500 on error", async () => {
-      (Project.findById as jest.Mock).mockRejectedValue(new Error("DB error"));
+      (getProjectById as jest.Mock).mockRejectedValue(new Error("DB error"));
 
       await linkSocialAccount(mockRequest as AuthRequest, mockResponse as Response);
 

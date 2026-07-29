@@ -21,9 +21,9 @@ const refreshLimiter = rateLimit({
   legacyHeaders: false,
 });
 
-router.post("/register", validateApiKey, authLimiter, register);
-router.post("/login", validateApiKey, authLimiter, login);
-router.post("/refresh", validateApiKey, refreshLimiter, refresh);
+router.post("/register", authLimiter, validateApiKey, register);
+router.post("/login", authLimiter, validateApiKey, login);
+router.post("/refresh", refreshLimiter, validateApiKey, refresh);
 router.post("/logout", authenticate, logout);
 
 export default router;

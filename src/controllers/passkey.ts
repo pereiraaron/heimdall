@@ -5,49 +5,19 @@ import {
   generateAuthenticationOptions as generateAuthOptions,
   verifyAuthenticationResponse,
 } from "@simplewebauthn/server";
-import {
-  User,
-  UserProjectMembership,
-  PasskeyCredential,
-  WebAuthnChallenge,
-  Project,
-} from "../models";
+import { User, UserProjectMembership, PasskeyCredential, WebAuthnChallenge } from "../models";
 import { createTokenPair } from "./auth";
 import { AuthRequest, ApiKeyRequest, MembershipStatus } from "../types";
-import { createTtlCache } from "../utils/ttlCache";
+import { getProjectById } from "../services/projectConfig";
 
 const DEFAULT_RP_ID = process.env.WEBAUTHN_RP_ID || "localhost";
 const DEFAULT_RP_NAME = process.env.WEBAUTHN_RP_NAME || "Heimdall";
 const DEFAULT_ORIGIN = process.env.WEBAUTHN_ORIGIN || "http://localhost:3000";
 const CHALLENGE_TTL_SECONDS = 60;
-const PROJECT_CACHE_TTL_MS = 5 * 60 * 1000;
-
-type CachedProjectFields = {
-  name?: string;
-  webauthnRpIds?: string[];
-  webauthnOrigins?: string[];
-};
-
-const projectConfigCache = createTtlCache<CachedProjectFields>(PROJECT_CACHE_TTL_MS);
-
-const getProjectConfig = async (projectId: string): Promise<CachedProjectFields> => {
-  const cached = projectConfigCache.get(projectId);
-  if (cached) return cached;
-
-  const project = await Project.findById(projectId)
-    .select("name webauthnRpIds webauthnOrigins")
-    .lean();
-  const fields: CachedProjectFields = {
-    name: project?.name,
-    webauthnRpIds: project?.webauthnRpIds,
-    webauthnOrigins: project?.webauthnOrigins,
-  };
-  projectConfigCache.set(projectId, fields);
-  return fields;
-};
 
 const getWebAuthnConfig = async (projectId: string, requestOrigin?: string) => {
-  const project = await getProjectConfig(projectId);
+  // Shared cache — already warm from validateApiKey on the login routes.
+  const project = await getProjectById(projectId);
   const rpName = project?.name || DEFAULT_RP_NAME;
 
   const rpIds = project?.webauthnRpIds?.length ? project.webauthnRpIds : [DEFAULT_RP_ID];
@@ -297,12 +267,10 @@ export const verifyAuthentication = async (req: ApiKeyRequest, res: Response) =>
       return;
     }
 
-    // Update counter
+    // Persist the counter alongside the user/membership lookups — all independent.
     storedCredential.counter = newCounter;
-    await storedCredential.save();
-
-    // Look up user and membership in parallel
-    const [user, membership] = await Promise.all([
+    const [, user, membership] = await Promise.all([
+      storedCredential.save(),
       User.findById(storedCredential.userId).select("email username").lean(),
       UserProjectMembership.findOne({
         userId: storedCredential.userId,

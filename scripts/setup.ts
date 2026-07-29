@@ -8,7 +8,7 @@ import {
   PasskeyCredential,
   WebAuthnChallenge,
   SocialAccount,
-} from "@models";
+} from "../src/models";
 
 dotenv.config();
 

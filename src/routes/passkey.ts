@@ -35,8 +35,8 @@ router.post("/register/options", authenticate, passkeyRegLimiter, generateRegist
 router.post("/register/verify", authenticate, passkeyRegLimiter, verifyRegistration);
 
 // Authentication (requires API key - project-scoped login)
-router.post("/login/options", validateApiKey, passkeyAuthLimiter, generateAuthenticationOptions);
-router.post("/login/verify", validateApiKey, passkeyAuthLimiter, verifyAuthentication);
+router.post("/login/options", passkeyAuthLimiter, validateApiKey, generateAuthenticationOptions);
+router.post("/login/verify", passkeyAuthLimiter, validateApiKey, verifyAuthentication);
 
 // Credential management (requires Bearer token)
 router.get("/credentials", authenticate, listCredentials);

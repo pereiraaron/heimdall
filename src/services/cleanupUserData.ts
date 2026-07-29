@@ -11,8 +11,9 @@ import {
  * and all associated records (tokens, passkeys, social accounts).
  */
 export const cleanupOrphanedUser = async (userId: string) => {
-  const remaining = await UserProjectMembership.countDocuments({ userId });
-  if (remaining > 0) return;
+  // exists() short-circuits on the first match; countDocuments scans them all.
+  const hasRemaining = await UserProjectMembership.exists({ userId });
+  if (hasRemaining) return;
 
   await Promise.all([
     RefreshToken.deleteMany({ userId }),

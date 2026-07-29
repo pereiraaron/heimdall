@@ -7,8 +7,7 @@ jest.mock("../../models", () => ({
     find: jest.fn(),
   },
   UserProjectMembership: {
-    find: jest.fn(),
-    insertMany: jest.fn().mockResolvedValue(undefined),
+    bulkWrite: jest.fn().mockResolvedValue(undefined),
   },
 }));
 
@@ -16,73 +15,67 @@ const mockFindLean = (mock: jest.Mock, value: unknown) => {
   mock.mockReturnValue({ lean: jest.fn().mockResolvedValue(value) });
 };
 
+const bulkWriteOps = () => (UserProjectMembership.bulkWrite as jest.Mock).mock.calls[0][0];
+
 describe("grantAllProjectsAccess", () => {
   beforeEach(() => {
     jest.clearAllMocks();
   });
 
-  it("should create memberships for projects the user is not in", async () => {
-    mockFindLean(Project.find as jest.Mock, [
-      { _id: { toString: () => "p1" } },
-      { _id: { toString: () => "p2" } },
-      { _id: { toString: () => "p3" } },
-    ]);
-    mockFindLean(UserProjectMembership.find as jest.Mock, [
-      { projectId: { toString: () => "p1" } },
-    ]);
+  it("should upsert a membership for every project", async () => {
+    mockFindLean(Project.find as jest.Mock, [{ _id: "p1" }, { _id: "p2" }, { _id: "p3" }]);
 
     await grantAllProjectsAccess("user-123");
 
-    expect(UserProjectMembership.insertMany).toHaveBeenCalledWith(
-      expect.arrayContaining([
-        expect.objectContaining({
-          userId: "user-123",
-          role: MembershipRole.Member,
-          status: MembershipStatus.Active,
-        }),
-      ])
-    );
-    const insertedMemberships = (UserProjectMembership.insertMany as jest.Mock).mock.calls[0][0];
-    expect(insertedMemberships).toHaveLength(2);
+    expect(UserProjectMembership.bulkWrite).toHaveBeenCalledTimes(1);
+    expect(bulkWriteOps()).toHaveLength(3);
   });
 
-  it("should not call insertMany if user is already in all projects", async () => {
-    mockFindLean(Project.find as jest.Mock, [{ _id: { toString: () => "p1" } }]);
-    mockFindLean(UserProjectMembership.find as jest.Mock, [
-      { projectId: { toString: () => "p1" } },
-    ]);
+  it("should scope each upsert to the user and project", async () => {
+    mockFindLean(Project.find as jest.Mock, [{ _id: "p1" }]);
 
     await grantAllProjectsAccess("user-123");
 
-    expect(UserProjectMembership.insertMany).not.toHaveBeenCalled();
-  });
-
-  it("should handle empty project list", async () => {
-    mockFindLean(Project.find as jest.Mock, []);
-    mockFindLean(UserProjectMembership.find as jest.Mock, []);
-
-    await grantAllProjectsAccess("user-123");
-
-    expect(UserProjectMembership.insertMany).not.toHaveBeenCalled();
-  });
-
-  it("should create memberships for all projects if user has none", async () => {
-    mockFindLean(Project.find as jest.Mock, [
-      { _id: { toString: () => "p1" } },
-      { _id: { toString: () => "p2" } },
-    ]);
-    mockFindLean(UserProjectMembership.find as jest.Mock, []);
-
-    await grantAllProjectsAccess("user-123");
-
-    const insertedMemberships = (UserProjectMembership.insertMany as jest.Mock).mock.calls[0][0];
-    expect(insertedMemberships).toHaveLength(2);
-    expect(insertedMemberships[0]).toEqual(
+    expect(bulkWriteOps()[0]).toEqual(
       expect.objectContaining({
-        userId: "user-123",
+        updateOne: expect.objectContaining({
+          filter: { userId: "user-123", projectId: "p1" },
+          upsert: true,
+        }),
+      })
+    );
+  });
+
+  it("should only set fields on insert so existing memberships are untouched", async () => {
+    mockFindLean(Project.find as jest.Mock, [{ _id: "p1" }]);
+
+    await grantAllProjectsAccess("user-123");
+
+    const { update } = bulkWriteOps()[0].updateOne;
+    expect(update.$set).toBeUndefined();
+    expect(update.$setOnInsert).toEqual(
+      expect.objectContaining({
         role: MembershipRole.Member,
         status: MembershipStatus.Active,
       })
     );
+  });
+
+  it("should run unordered so one duplicate doesn't abort the batch", async () => {
+    mockFindLean(Project.find as jest.Mock, [{ _id: "p1" }]);
+
+    await grantAllProjectsAccess("user-123");
+
+    expect((UserProjectMembership.bulkWrite as jest.Mock).mock.calls[0][1]).toEqual(
+      expect.objectContaining({ ordered: false })
+    );
+  });
+
+  it("should handle empty project list without writing", async () => {
+    mockFindLean(Project.find as jest.Mock, []);
+
+    await grantAllProjectsAccess("user-123");
+
+    expect(UserProjectMembership.bulkWrite).not.toHaveBeenCalled();
   });
 });

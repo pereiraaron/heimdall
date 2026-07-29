@@ -12,7 +12,7 @@ jest.mock("../../models", () => ({
     findByIdAndDelete: jest.fn().mockResolvedValue(undefined),
   },
   UserProjectMembership: {
-    countDocuments: jest.fn(),
+    exists: jest.fn(),
   },
   RefreshToken: {
     deleteMany: jest.fn().mockResolvedValue(undefined),
@@ -31,11 +31,11 @@ describe("cleanupOrphanedUser", () => {
   });
 
   it("should not delete user if they have remaining memberships", async () => {
-    (UserProjectMembership.countDocuments as jest.Mock).mockResolvedValue(2);
+    (UserProjectMembership.exists as jest.Mock).mockResolvedValue({ _id: "m1" });
 
     await cleanupOrphanedUser("user-123");
 
-    expect(UserProjectMembership.countDocuments).toHaveBeenCalledWith({ userId: "user-123" });
+    expect(UserProjectMembership.exists).toHaveBeenCalledWith({ userId: "user-123" });
     expect(User.findByIdAndDelete).not.toHaveBeenCalled();
     expect(RefreshToken.deleteMany).not.toHaveBeenCalled();
     expect(PasskeyCredential.deleteMany).not.toHaveBeenCalled();
@@ -43,7 +43,7 @@ describe("cleanupOrphanedUser", () => {
   });
 
   it("should delete user and all associated records if no memberships remain", async () => {
-    (UserProjectMembership.countDocuments as jest.Mock).mockResolvedValue(0);
+    (UserProjectMembership.exists as jest.Mock).mockResolvedValue(null);
 
     await cleanupOrphanedUser("user-123");
 
@@ -53,8 +53,8 @@ describe("cleanupOrphanedUser", () => {
     expect(User.findByIdAndDelete).toHaveBeenCalledWith("user-123");
   });
 
-  it("should not delete if exactly one membership remains", async () => {
-    (UserProjectMembership.countDocuments as jest.Mock).mockResolvedValue(1);
+  it("should not delete if any membership remains", async () => {
+    (UserProjectMembership.exists as jest.Mock).mockResolvedValue({ _id: "m1" });
 
     await cleanupOrphanedUser("user-123");
 

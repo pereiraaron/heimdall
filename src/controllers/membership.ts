@@ -5,19 +5,30 @@ import bcrypt from "bcrypt";
 import { User, UserProjectMembership } from "../models";
 import { AuthRequest, MembershipRole, MembershipStatus, canManageRole } from "../types";
 import { cleanupOrphanedUser } from "../services/cleanupUserData";
+import { parsePagination } from "../utils/pagination";
 
 export const getProjectMembers = async (req: AuthRequest, res: Response) => {
   try {
     const projectId = req.user?.projectId;
+    const { page, limit, skip } = parsePagination(req.query);
 
-    const memberships = await UserProjectMembership.find({
+    const filter = {
       projectId,
       status: { $in: [MembershipStatus.Active, MembershipStatus.Pending] },
-    })
-      .populate("userId", "email username")
-      .lean();
+    };
 
-    res.status(200).json(memberships);
+    const [members, total] = await Promise.all([
+      UserProjectMembership.find(filter)
+        .select("userId role status joinedAt invitedBy createdAt updatedAt")
+        .populate("userId", "email username")
+        .sort({ _id: 1 })
+        .skip(skip)
+        .limit(limit)
+        .lean(),
+      UserProjectMembership.countDocuments(filter),
+    ]);
+
+    res.status(200).json({ members, page, limit, total });
   } catch (error) {
     res.status(500).json({ message: "Error fetching members" });
   }

@@ -1,12 +1,6 @@
 import { Response } from "express";
 import { login, register, refresh, logout } from "../auth";
-import {
-  User,
-  UserProjectMembership,
-  RefreshToken,
-  Project,
-  PasskeyCredential,
-} from "../../models";
+import { User, UserProjectMembership, RefreshToken, PasskeyCredential } from "../../models";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import { ApiKeyRequest, AuthRequest, MembershipRole, MembershipStatus } from "../../types";
@@ -17,6 +11,10 @@ jest.mock("../../config/flags", () => ({
 
 jest.mock("../../services/grantAllProjectsAccess", () => ({
   grantAllProjectsAccess: jest.fn().mockResolvedValue(undefined),
+}));
+
+jest.mock("../../services/projectConfig", () => ({
+  getProjectById: jest.fn().mockResolvedValue({ id: "project-123", passkeyPolicy: "optional" }),
 }));
 
 jest.mock("../../models", () => ({
@@ -35,9 +33,6 @@ jest.mock("../../models", () => ({
     create: jest.fn(),
     findOne: jest.fn(),
     findOneAndUpdate: jest.fn(),
-  },
-  Project: {
-    findById: jest.fn(),
   },
   PasskeyCredential: {
     exists: jest.fn(),
@@ -70,6 +65,8 @@ describe("Auth Controller", () => {
         password: "password123",
       },
       projectId: "project-123",
+      // validateApiKey populates this — handlers must not re-read the project.
+      project: { id: "project-123", passkeyPolicy: "optional" },
     };
 
     mockResponse = {
@@ -98,7 +95,7 @@ describe("Auth Controller", () => {
     it("should return 401 if user is not found", async () => {
       mockRequest.body = { email: "test@example.com", password: "password123" };
       (User.findOne as jest.Mock).mockReturnValueOnce({
-        select: jest.fn().mockResolvedValueOnce(null),
+        select: jest.fn().mockReturnValue({ lean: jest.fn().mockResolvedValue(null) }),
       });
 
       await login(mockRequest as ApiKeyRequest, mockResponse as Response);
@@ -112,10 +109,12 @@ describe("Auth Controller", () => {
     it("should return 401 if password is invalid", async () => {
       mockRequest.body = { email: "test@example.com", password: "password123" };
       (User.findOne as jest.Mock).mockReturnValueOnce({
-        select: jest.fn().mockResolvedValueOnce({
-          _id: "user123",
-          email: "test@example.com",
-          password: "hashedPassword",
+        select: jest.fn().mockReturnValue({
+          lean: jest.fn().mockResolvedValue({
+            _id: "user123",
+            email: "test@example.com",
+            password: "hashedPassword",
+          }),
         }),
       });
       (bcrypt.compare as jest.Mock).mockResolvedValueOnce(false);
@@ -128,22 +127,18 @@ describe("Auth Controller", () => {
     it("should return 403 if user has no active membership for project", async () => {
       mockRequest.body = { email: "test@example.com", password: "password123" };
       (User.findOne as jest.Mock).mockReturnValueOnce({
-        select: jest.fn().mockResolvedValueOnce({
-          _id: "user123",
-          email: "test@example.com",
-          password: "hashedPassword",
+        select: jest.fn().mockReturnValue({
+          lean: jest.fn().mockResolvedValue({
+            _id: "user123",
+            email: "test@example.com",
+            password: "hashedPassword",
+          }),
         }),
       });
       (bcrypt.compare as jest.Mock).mockResolvedValueOnce(true);
       (UserProjectMembership.findOne as jest.Mock).mockReturnValueOnce({
         lean: jest.fn().mockResolvedValueOnce(null),
       });
-      (Project.findById as jest.Mock).mockReturnValueOnce({
-        select: jest.fn().mockReturnValue({
-          lean: jest.fn().mockResolvedValue({ passkeyPolicy: "optional" }),
-        }),
-      });
-
       await login(mockRequest as ApiKeyRequest, mockResponse as Response);
 
       expect(responseStatus).toHaveBeenCalledWith(403);
@@ -164,7 +159,7 @@ describe("Auth Controller", () => {
       };
 
       (User.findOne as jest.Mock).mockReturnValueOnce({
-        select: jest.fn().mockResolvedValueOnce(mockUser),
+        select: jest.fn().mockReturnValue({ lean: jest.fn().mockResolvedValue(mockUser) }),
       });
       (bcrypt.compare as jest.Mock).mockResolvedValueOnce(true);
       (UserProjectMembership.findOne as jest.Mock).mockReturnValueOnce({
@@ -172,11 +167,6 @@ describe("Auth Controller", () => {
       });
       (jwt.sign as jest.Mock).mockReturnValueOnce("test-access-token");
       (RefreshToken.create as jest.Mock).mockResolvedValueOnce({});
-      (Project.findById as jest.Mock).mockReturnValueOnce({
-        select: jest.fn().mockReturnValue({
-          lean: jest.fn().mockResolvedValue({ passkeyPolicy: "optional" }),
-        }),
-      });
       (PasskeyCredential.exists as jest.Mock).mockResolvedValueOnce(null);
 
       await login(mockRequest as ApiKeyRequest, mockResponse as Response);
@@ -203,10 +193,73 @@ describe("Auth Controller", () => {
       );
     });
 
+    it("should skip the passkey lookup when the project policy is optional", async () => {
+      mockRequest.body = { email: "test@example.com", password: "password123" };
+      (User.findOne as jest.Mock).mockReturnValueOnce({
+        select: jest.fn().mockReturnValue({
+          lean: jest.fn().mockResolvedValue({
+            _id: { toString: () => "user123" },
+            email: "test@example.com",
+            password: "hashedPassword",
+          }),
+        }),
+      });
+      (bcrypt.compare as jest.Mock).mockResolvedValueOnce(true);
+      (UserProjectMembership.findOne as jest.Mock).mockReturnValueOnce({
+        lean: jest.fn().mockResolvedValue({
+          _id: { toString: () => "membership123" },
+          role: MembershipRole.Member,
+        }),
+      });
+      (jwt.sign as jest.Mock).mockReturnValueOnce("token");
+      (RefreshToken.create as jest.Mock).mockResolvedValueOnce({});
+
+      await login(mockRequest as ApiKeyRequest, mockResponse as Response);
+
+      expect(PasskeyCredential.exists).not.toHaveBeenCalled();
+      expect(responseStatus).toHaveBeenCalledWith(200);
+      expect(responseJson).toHaveBeenCalledWith(
+        expect.not.objectContaining({ passkeySetupRequired: true })
+      );
+    });
+
+    it("should flag passkey setup when the policy is encouraged and the user has none", async () => {
+      mockRequest.body = { email: "test@example.com", password: "password123" };
+      mockRequest.project = { id: "project-123", passkeyPolicy: "encouraged" };
+      (User.findOne as jest.Mock).mockReturnValueOnce({
+        select: jest.fn().mockReturnValue({
+          lean: jest.fn().mockResolvedValue({
+            _id: { toString: () => "user123" },
+            email: "test@example.com",
+            password: "hashedPassword",
+          }),
+        }),
+      });
+      (bcrypt.compare as jest.Mock).mockResolvedValueOnce(true);
+      (UserProjectMembership.findOne as jest.Mock).mockReturnValueOnce({
+        lean: jest.fn().mockResolvedValue({
+          _id: { toString: () => "membership123" },
+          role: MembershipRole.Member,
+        }),
+      });
+      (PasskeyCredential.exists as jest.Mock).mockResolvedValueOnce(null);
+      (jwt.sign as jest.Mock).mockReturnValueOnce("token");
+      (RefreshToken.create as jest.Mock).mockResolvedValueOnce({});
+
+      await login(mockRequest as ApiKeyRequest, mockResponse as Response);
+
+      expect(PasskeyCredential.exists).toHaveBeenCalledTimes(1);
+      expect(responseJson).toHaveBeenCalledWith(
+        expect.objectContaining({ passkeySetupRequired: true })
+      );
+    });
+
     it("should return 500 on server error", async () => {
       mockRequest.body = { email: "test@example.com", password: "password123" };
       (User.findOne as jest.Mock).mockReturnValueOnce({
-        select: jest.fn().mockRejectedValueOnce(new Error("Database error")),
+        select: jest.fn().mockReturnValue({
+          lean: jest.fn().mockRejectedValue(new Error("Database error")),
+        }),
       });
 
       await login(mockRequest as ApiKeyRequest, mockResponse as Response);
@@ -227,7 +280,9 @@ describe("Auth Controller", () => {
 
     it("should return 401 if refresh token is invalid", async () => {
       mockRequest.body = { refreshToken: "invalid-token" };
-      (RefreshToken.findOne as jest.Mock).mockResolvedValueOnce(null);
+      (RefreshToken.findOneAndUpdate as jest.Mock).mockReturnValueOnce({
+        lean: jest.fn().mockResolvedValue(null),
+      });
 
       await refresh(mockRequest as ApiKeyRequest, mockResponse as Response);
 
@@ -242,10 +297,8 @@ describe("Auth Controller", () => {
       const pastDate = new Date();
       pastDate.setDate(pastDate.getDate() - 1);
 
-      (RefreshToken.findOne as jest.Mock).mockResolvedValueOnce({
-        expiresAt: pastDate,
-        isRevoked: false,
-        save: jest.fn(),
+      (RefreshToken.findOneAndUpdate as jest.Mock).mockReturnValueOnce({
+        lean: jest.fn().mockResolvedValue({ expiresAt: pastDate, isRevoked: false }),
       });
 
       await refresh(mockRequest as ApiKeyRequest, mockResponse as Response);
@@ -261,13 +314,14 @@ describe("Auth Controller", () => {
       const futureDate = new Date();
       futureDate.setDate(futureDate.getDate() + 7);
 
-      (RefreshToken.findOne as jest.Mock).mockResolvedValueOnce({
-        userId: "user123",
-        projectId: "project-123",
-        membershipId: "membership123",
-        expiresAt: futureDate,
-        isRevoked: false,
-        save: jest.fn(),
+      (RefreshToken.findOneAndUpdate as jest.Mock).mockReturnValueOnce({
+        lean: jest.fn().mockResolvedValue({
+          userId: "user123",
+          projectId: "project-123",
+          membershipId: "membership123",
+          expiresAt: futureDate,
+          isRevoked: false,
+        }),
       });
       (UserProjectMembership.findOne as jest.Mock).mockReturnValueOnce({
         lean: jest.fn().mockResolvedValue({
@@ -295,6 +349,22 @@ describe("Auth Controller", () => {
           accessToken: "new-access-token",
           refreshToken: expect.any(String),
         })
+      );
+    });
+
+    it("should claim and revoke the old token in a single atomic update", async () => {
+      mockRequest.body = { refreshToken: "valid-refresh-token" };
+      (RefreshToken.findOneAndUpdate as jest.Mock).mockReturnValueOnce({
+        lean: jest.fn().mockResolvedValue(null),
+      });
+
+      await refresh(mockRequest as ApiKeyRequest, mockResponse as Response);
+
+      expect(RefreshToken.findOneAndUpdate).toHaveBeenCalledTimes(1);
+      expect(RefreshToken.findOneAndUpdate).toHaveBeenCalledWith(
+        expect.objectContaining({ projectId: "project-123", isRevoked: false }),
+        { isRevoked: true },
+        { new: false }
       );
     });
   });
@@ -351,10 +421,12 @@ describe("Auth Controller", () => {
     it("should return 400 if user already has active membership for this project", async () => {
       mockRequest.body = { email: "test@example.com", password: "password123" };
       (User.findOne as jest.Mock).mockReturnValueOnce({
-        select: jest.fn().mockResolvedValueOnce({
-          _id: "user123",
-          email: "test@example.com",
-          password: "hashedPassword",
+        select: jest.fn().mockReturnValue({
+          lean: jest.fn().mockResolvedValue({
+            _id: "user123",
+            email: "test@example.com",
+            password: "hashedPassword",
+          }),
         }),
       });
       (UserProjectMembership.findOne as jest.Mock).mockResolvedValueOnce({
@@ -370,7 +442,7 @@ describe("Auth Controller", () => {
       mockRequest.body = { email: "test@example.com", password: "password123" };
 
       (User.findOne as jest.Mock).mockReturnValueOnce({
-        select: jest.fn().mockResolvedValueOnce(null),
+        select: jest.fn().mockReturnValue({ lean: jest.fn().mockResolvedValue(null) }),
       });
       (bcrypt.hash as jest.Mock).mockResolvedValueOnce("hashedPassword");
       (User.create as jest.Mock).mockResolvedValueOnce({
@@ -388,7 +460,7 @@ describe("Auth Controller", () => {
       mockRequest.body = { email: "test@example.com", password: "password123" };
 
       (User.findOne as jest.Mock).mockReturnValueOnce({
-        select: jest.fn().mockResolvedValueOnce(null),
+        select: jest.fn().mockReturnValue({ lean: jest.fn().mockResolvedValue(null) }),
       });
       (bcrypt.hash as jest.Mock).mockRejectedValueOnce(new Error("Hashing error"));
 
