@@ -52,7 +52,7 @@
     ]
   },
   "dependencies": {
-    "@simplewebauthn/server": "^13.0.0",
+    "@simplewebauthn/server": "^14.0.0",
     "bcrypt": "^6.0.0",
     "compression": "^1.8.1",
     "cors": "^2.8.6",
