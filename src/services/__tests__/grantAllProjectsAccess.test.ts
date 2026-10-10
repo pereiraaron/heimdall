@@ -1,4 +1,4 @@
-import { grantAllProjectsAccess } from "../grantAllProjectsAccess";
+import { grantAllProjectsAccess, clearProjectIdsCache } from "../grantAllProjectsAccess";
 import { Project, UserProjectMembership } from "../../models";
 import { MembershipRole, MembershipStatus } from "../../types";
 
@@ -20,6 +20,7 @@ const bulkWriteOps = () => (UserProjectMembership.bulkWrite as jest.Mock).mock.c
 describe("grantAllProjectsAccess", () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    clearProjectIdsCache();
   });
 
   it("should upsert a membership for every project", async () => {
@@ -77,5 +78,15 @@ describe("grantAllProjectsAccess", () => {
     await grantAllProjectsAccess("user-123");
 
     expect(UserProjectMembership.bulkWrite).not.toHaveBeenCalled();
+  });
+
+  it("should reuse the cached project ids on later calls", async () => {
+    mockFindLean(Project.find as jest.Mock, [{ _id: "p1" }]);
+
+    await grantAllProjectsAccess("user-1");
+    await grantAllProjectsAccess("user-2");
+
+    expect(Project.find).toHaveBeenCalledTimes(1);
+    expect(UserProjectMembership.bulkWrite).toHaveBeenCalledTimes(2);
   });
 });

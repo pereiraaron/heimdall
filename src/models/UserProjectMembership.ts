@@ -48,7 +48,8 @@ const userProjectMembershipSchema = new Schema<IUserProjectMembership>(
 
 // Compound index for efficient queries
 userProjectMembershipSchema.index({ userId: 1, projectId: 1 }, { unique: true });
-userProjectMembershipSchema.index({ projectId: 1, status: 1 });
+// Covers the list endpoints: filter on project + status, sorted by _id (no in-memory sort)
+userProjectMembershipSchema.index({ projectId: 1, status: 1, _id: 1 });
 userProjectMembershipSchema.index({ userId: 1, status: 1 });
 
 export const UserProjectMembership = model<IUserProjectMembership>(

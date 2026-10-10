@@ -52,6 +52,20 @@
         "required": false,
         "description": "Results per page. Values above the maximum are clamped.",
         "schema": { "type": "integer", "minimum": 1, "maximum": 200, "default": 50 }
+      },
+      "After": {
+        "name": "after",
+        "in": "query",
+        "required": false,
+        "description": "Cursor from a previous response's `nextCursor`. When set, `page` is ignored. Faster than `page` for deep lists.",
+        "schema": { "type": "string", "pattern": "^[0-9a-fA-F]{24}$" }
+      },
+      "Count": {
+        "name": "count",
+        "in": "query",
+        "required": false,
+        "description": "Set to `false` to skip the total count (`total` is then omitted).",
+        "schema": { "type": "string", "enum": ["true", "false"], "default": "true" }
       }
     },
     "schemas": {
@@ -803,7 +817,9 @@
         "security": [{ "BearerAuth": [] }],
         "parameters": [
           { "$ref": "#/components/parameters/Page" },
-          { "$ref": "#/components/parameters/Limit" }
+          { "$ref": "#/components/parameters/Limit" },
+          { "$ref": "#/components/parameters/After" },
+          { "$ref": "#/components/parameters/Count" }
         ],
         "responses": {
           "200": {
@@ -823,6 +839,11 @@
                       "type": "integer",
                       "description": "Total matching records across all pages.",
                       "example": 137
+                    },
+                    "nextCursor": {
+                      "type": "string",
+                      "nullable": true,
+                      "description": "Pass as `after` to fetch the next page. Null when the page is not full."
                     }
                   }
                 }
@@ -951,7 +972,9 @@
         "security": [{ "BearerAuth": [] }],
         "parameters": [
           { "$ref": "#/components/parameters/Page" },
-          { "$ref": "#/components/parameters/Limit" }
+          { "$ref": "#/components/parameters/Limit" },
+          { "$ref": "#/components/parameters/After" },
+          { "$ref": "#/components/parameters/Count" }
         ],
         "responses": {
           "200": {
@@ -971,6 +994,11 @@
                       "type": "integer",
                       "description": "Total matching records across all pages.",
                       "example": 137
+                    },
+                    "nextCursor": {
+                      "type": "string",
+                      "nullable": true,
+                      "description": "Pass as `after` to fetch the next page. Null when the page is not full."
                     }
                   }
                 }

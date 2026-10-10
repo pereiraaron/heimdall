@@ -18,7 +18,8 @@ if (!process.env.JWT_SECRET) {
 const app: Express = express();
 const PORT = process.env.PORT || 7001;
 
-app.use(cors());
+// Let browsers cache preflight responses for 10 minutes instead of re-sending OPTIONS
+app.use(cors({ maxAge: 600 }));
 app.use(compression());
 app.use(express.json());
 

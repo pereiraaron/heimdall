@@ -134,6 +134,45 @@ describe("User Controller", () => {
       expect(chain.limit).toHaveBeenCalledWith(10);
     });
 
+    it("should continue after a cursor without using skip", async () => {
+      const chain = mockFindChain([]);
+      (UserProjectMembership.find as jest.Mock).mockReturnValue(chain);
+      (UserProjectMembership.countDocuments as jest.Mock).mockResolvedValue(0);
+      mockRequest.query = { after: "507f1f77bcf86cd799439011", page: "5" };
+
+      await getAllUsers(mockRequest as AuthRequest, mockResponse as Response);
+
+      expect(UserProjectMembership.find).toHaveBeenCalledWith(
+        expect.objectContaining({ _id: { $gt: "507f1f77bcf86cd799439011" } })
+      );
+      expect(chain.skip).toHaveBeenCalledWith(0);
+    });
+
+    it("should skip the count query when count=false", async () => {
+      (UserProjectMembership.find as jest.Mock).mockReturnValue(mockFindChain([]));
+      mockRequest.query = { count: "false" };
+
+      await getAllUsers(mockRequest as AuthRequest, mockResponse as Response);
+
+      expect(UserProjectMembership.countDocuments).not.toHaveBeenCalled();
+      expect(responseStatus).toHaveBeenCalledWith(200);
+    });
+
+    it("should return a nextCursor when the page is full", async () => {
+      (UserProjectMembership.find as jest.Mock).mockReturnValue(
+        mockFindChain([
+          { _id: "a", userId: {} },
+          { _id: "b", userId: {} },
+        ])
+      );
+      (UserProjectMembership.countDocuments as jest.Mock).mockResolvedValue(5);
+      mockRequest.query = { limit: "2" };
+
+      await getAllUsers(mockRequest as AuthRequest, mockResponse as Response);
+
+      expect(responseJson).toHaveBeenCalledWith(expect.objectContaining({ nextCursor: "b" }));
+    });
+
     it("should clamp an oversized limit to the maximum page size", async () => {
       const chain = mockFindChain([]);
       (UserProjectMembership.find as jest.Mock).mockReturnValue(chain);
